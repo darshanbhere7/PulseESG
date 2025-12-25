@@ -45,12 +45,6 @@ def health_check():
 def analyze_esg(request: ESGRequest):
     """
     Core ESG intelligence endpoint.
-
-    Accepts unstructured ESG-related text and returns:
-    - ESG Score
-    - Risk Level
-    - ESG Signals
-    - Explanation
     """
 
     result = analyze_text(request.text)
