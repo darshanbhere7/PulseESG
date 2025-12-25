@@ -101,13 +101,15 @@ public class SecurityConfig {
             config.setAllowedOrigins(List.of(
                     "http://localhost:5173",
                     "http://localhost:3000",
+                    "https://pulse-esg.vercel.app/",
                     frontendUrl
             ));
         } else {
             // Default: allow localhost for development
             config.setAllowedOrigins(List.of(
                     "http://localhost:5173",
-                    "http://localhost:3000"
+                    "http://localhost:3000",
+                    "https://pulse-esg.vercel.app/"
             ));
         }
 
