@@ -155,7 +155,7 @@ export default function Overview() {
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">ESG Overview</h1>
         <p className="text-muted-foreground">
-          Portfolio-level ESG risk intelligence
+          AI-driven ESG risk intelligence for portfolio monitoring
         </p>
       </div>
 

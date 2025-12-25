@@ -17,7 +17,7 @@ import java.util.List;
 
 @Configuration
 @RequiredArgsConstructor
-@EnableMethodSecurity   // 🔴 REQUIRED FOR @PreAuthorize
+@EnableMethodSecurity   // REQUIRED for @PreAuthorize
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
@@ -48,10 +48,17 @@ public class SecurityConfig {
                 // ===============================
                 .authorizeHttpRequests(auth -> auth
 
-                        // Public endpoints
+                        // 🔴 REQUIRED FOR RENDER HEALTH CHECK
+                        .requestMatchers(
+                                "/",
+                                "/health",
+                                "/actuator/health"
+                        ).permitAll()
+
+                        // Auth APIs
                         .requestMatchers("/api/auth/**").permitAll()
 
-                        // Everything else requires authentication
+                        // Everything else requires JWT
                         .anyRequest().authenticated()
                 )
 
@@ -71,8 +78,11 @@ public class SecurityConfig {
 
         CorsConfiguration config = new CorsConfiguration();
 
-        // Frontend (Vite)
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        // Local + deployed frontend (safe)
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173"
+                // add deployed frontend URL later if needed
+        ));
 
         config.setAllowedMethods(
                 List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")
