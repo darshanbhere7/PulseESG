@@ -62,7 +62,7 @@ function Analyze() {
       setLoading(true);
       setResult(null);
 
-      const res = await api.post("/analyze", {
+      const res = await api.post("/esg/analyze", {
         companyId: Number(companyId),
         newsText,
       });
