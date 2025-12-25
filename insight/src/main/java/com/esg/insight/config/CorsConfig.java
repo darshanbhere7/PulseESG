@@ -13,14 +13,29 @@ public class CorsConfig {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/api/**")
-                        .allowedOrigins(
-                                "http://localhost:3000",
-                                "http://localhost:5173"
-                        )
-                        .allowedMethods("GET", "POST", "PUT", "DELETE")
-                        .allowedHeaders("*")
-                        .allowCredentials(true);
+                String frontendUrl = System.getenv("FRONTEND_URL");
+                if (frontendUrl != null && !frontendUrl.isEmpty()) {
+                    registry.addMapping("/api/**")
+                            .allowedOrigins(
+                                    "http://localhost:3000",
+                                    "http://localhost:5173",
+                                    frontendUrl
+                            )
+                            .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                            .allowedHeaders("*")
+                            .allowCredentials(true)
+                            .maxAge(3600);
+                } else {
+                    registry.addMapping("/api/**")
+                            .allowedOrigins(
+                                    "http://localhost:3000",
+                                    "http://localhost:5173"
+                            )
+                            .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                            .allowedHeaders("*")
+                            .allowCredentials(true)
+                            .maxAge(3600);
+                }
             }
         };
     }

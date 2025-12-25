@@ -13,6 +13,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 
 @Configuration
@@ -65,7 +66,23 @@ public class SecurityConfig {
                 // ===============================
                 // JWT FILTER
                 // ===============================
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                
+                // ===============================
+                // EXCEPTION HANDLING
+                // ===============================
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"error\":\"Authentication required\"}");
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"error\":\"Access denied\"}");
+                        })
+                );
 
         return http.build();
     }
@@ -78,11 +95,21 @@ public class SecurityConfig {
 
         CorsConfiguration config = new CorsConfiguration();
 
-        // Local + deployed frontend (safe)
-        config.setAllowedOrigins(List.of(
-                "http://localhost:5173"
-                // add deployed frontend URL later if needed
-        ));
+        // Local + deployed frontend
+        String frontendUrl = System.getenv("FRONTEND_URL");
+        if (frontendUrl != null && !frontendUrl.isEmpty()) {
+            config.setAllowedOrigins(List.of(
+                    "http://localhost:5173",
+                    "http://localhost:3000",
+                    frontendUrl
+            ));
+        } else {
+            // Default: allow localhost for development
+            config.setAllowedOrigins(List.of(
+                    "http://localhost:5173",
+                    "http://localhost:3000"
+            ));
+        }
 
         config.setAllowedMethods(
                 List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")

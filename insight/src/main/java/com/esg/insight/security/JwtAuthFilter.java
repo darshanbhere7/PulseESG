@@ -35,27 +35,36 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             String token = authHeader.substring(7);
 
-            if (jwtUtil.validateToken(token)) {
+            try {
+                if (jwtUtil.validateToken(token)) {
 
-                String email = jwtUtil.extractEmail(token);
-                String role = jwtUtil.extractRole(token); // 🔴 IMPORTANT
+                    String email = jwtUtil.extractEmail(token);
+                    String role = jwtUtil.extractRole(token); // 🔴 IMPORTANT
 
-                // Spring Security expects ROLE_ prefix
-                SimpleGrantedAuthority authority =
-                        new SimpleGrantedAuthority("ROLE_" + role);
+                    // Ensure both email and role are present
+                    if (email != null && role != null && !role.isEmpty()) {
+                        // Spring Security expects ROLE_ prefix
+                        SimpleGrantedAuthority authority =
+                                new SimpleGrantedAuthority("ROLE_" + role.toUpperCase());
 
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                email,
-                                null,
-                                List.of(authority)
+                        UsernamePasswordAuthenticationToken authentication =
+                                new UsernamePasswordAuthenticationToken(
+                                        email,
+                                        null,
+                                        List.of(authority)
+                                );
+
+                        authentication.setDetails(
+                                new WebAuthenticationDetailsSource().buildDetails(request)
                         );
 
-                authentication.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    }
+                }
+            } catch (Exception e) {
+                // Log error but continue - Spring Security will handle unauthorized requests
+                // This prevents exceptions from breaking the filter chain
+                // If token is invalid, authentication won't be set and Spring Security will return 401
             }
         }
 

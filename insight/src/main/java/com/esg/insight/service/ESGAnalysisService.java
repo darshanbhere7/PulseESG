@@ -77,19 +77,28 @@ public class ESGAnalysisService {
     // ===============================
     @Transactional(readOnly = true)
     public List<ESGHistoryResponse> getHistory(Long companyId) {
+        if (companyId == null) {
+            throw new IllegalArgumentException("Company ID cannot be null");
+        }
 
         return esgAnalysisRepository
                 .findByCompanyIdOrderByCreatedAtDesc(companyId)
                 .stream()
-                .map(a -> ESGHistoryResponse.builder()
-                        .analysisId(a.getId())
-                        .companyName(a.getCompany().getName())
-                        .esgScore(a.getEsgScore())
-                        .riskLevel(a.getRiskLevel())
-                        .explanation(a.getExplanation())
-                        .signals(a.getSignals())
-                        .timestamp(a.getCreatedAt())
-                        .build())
+                .map(a -> {
+                    if (a == null || a.getCompany() == null) {
+                        return null;
+                    }
+                    return ESGHistoryResponse.builder()
+                            .analysisId(a.getId())
+                            .companyName(a.getCompany().getName())
+                            .esgScore(a.getEsgScore() != null ? a.getEsgScore() : 0)
+                            .riskLevel(a.getRiskLevel() != null ? a.getRiskLevel() : "UNKNOWN")
+                            .explanation(a.getExplanation())
+                            .signals(a.getSignals())
+                            .timestamp(a.getCreatedAt())
+                            .build();
+                })
+                .filter(response -> response != null)
                 .toList();
     }
 }
