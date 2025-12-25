@@ -36,16 +36,19 @@ public class ESGAnalysisService {
 
         Map<String, Object> aiResult = aiClient.analyzeText(request.getNewsText());
 
-        // 🔴 STRICT FIELD EXTRACTION
-        Integer esgScore = (Integer) aiResult.get("esgScore");
+        // ✅ SAFE FIELD EXTRACTION (FIXED)
+        Number esgScoreNumber = (Number) aiResult.get("esgScore");
+        Integer esgScore = esgScoreNumber != null ? esgScoreNumber.intValue() : null;
+
         String riskLevel = (String) aiResult.get("riskLevel");
         String explanation = (String) aiResult.get("explanation");
 
         if (esgScore == null || riskLevel == null || explanation == null) {
-            throw new RuntimeException("Invalid AI response structure");
+            throw new RuntimeException("Invalid AI response structure: " + aiResult);
         }
 
         // Store full AI signals for auditability
+        @SuppressWarnings("unchecked")
         Map<String, Object> signals =
                 (Map<String, Object>) aiResult.getOrDefault("signals", Map.of());
 
@@ -55,7 +58,7 @@ public class ESGAnalysisService {
                 .esgScore(esgScore)
                 .riskLevel(riskLevel)
                 .explanation(explanation)
-                .signals(signals) // 🔴 NEW FIELD (JSON)
+                .signals(signals)
                 .build();
 
         esgAnalysisRepository.save(analysis);
@@ -77,6 +80,7 @@ public class ESGAnalysisService {
     // ===============================
     @Transactional(readOnly = true)
     public List<ESGHistoryResponse> getHistory(Long companyId) {
+
         if (companyId == null) {
             throw new IllegalArgumentException("Company ID cannot be null");
         }
@@ -88,6 +92,7 @@ public class ESGAnalysisService {
                     if (a == null || a.getCompany() == null) {
                         return null;
                     }
+
                     return ESGHistoryResponse.builder()
                             .analysisId(a.getId())
                             .companyName(a.getCompany().getName())
