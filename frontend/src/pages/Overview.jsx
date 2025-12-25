@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+// removed Badge import: use compact pill spans for risk level styling
 import {
   Table,
   TableBody,
@@ -46,6 +46,8 @@ export default function Overview() {
   const [companies, setCompanies] = useState([]);
   const [analyses, setAnalyses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [companyFilter, setCompanyFilter] = useState("ALL");
+  const [riskFilter, setRiskFilter] = useState("ALL");
 
   useEffect(() => {
     loadData();
@@ -190,9 +192,35 @@ export default function Overview() {
 
       {/* TABLE */}
       <Card>
-        <CardHeader>
-          <CardTitle>Recent ESG Analyses</CardTitle>
-          <CardDescription>Latest 5 assessments</CardDescription>
+        <CardHeader className="flex items-start gap-4">
+          <div>
+            <CardTitle>Recent ESG Analyses</CardTitle>
+            <CardDescription>Latest ESG risk evaluations performed by the system</CardDescription>
+          </div>
+
+          <div className="ml-auto flex items-center gap-3">
+            <select
+              value={companyFilter}
+              onChange={(e) => setCompanyFilter(e.target.value)}
+              className="px-3 py-2 rounded-md bg-card border border-border text-foreground text-sm"
+            >
+              <option value="ALL">All Companies</option>
+              {companies.map((c) => (
+                <option key={c.id} value={c.name}>{c.name}</option>
+              ))}
+            </select>
+
+            <select
+              value={riskFilter}
+              onChange={(e) => setRiskFilter(e.target.value)}
+              className="px-3 py-2 rounded-md bg-card border border-border text-foreground text-sm"
+            >
+              <option value="ALL">All Risks</option>
+              <option value="LOW">LOW</option>
+              <option value="MEDIUM">MEDIUM</option>
+              <option value="HIGH">HIGH</option>
+            </select>
+          </div>
         </CardHeader>
         <CardContent>
           {analyses.length === 0 ? (
@@ -204,30 +232,62 @@ export default function Overview() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Company</TableHead>
-                  <TableHead>Score</TableHead>
-                  <TableHead>Risk</TableHead>
+                  <TableHead>ESG Score</TableHead>
+                  <TableHead>Risk Level</TableHead>
+                  <TableHead className="text-right">Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {analyses.slice(0, 5).map((a) => (
-                  <TableRow key={a.analysisId}>
-                    <TableCell className="font-medium">
-                      {a.companyName}
-                    </TableCell>
-                    <TableCell>{a.esgScore}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        style={{
-                          borderColor: RISK_COLORS[a.riskLevel],
-                          color: RISK_COLORS[a.riskLevel],
-                        }}
-                      >
-                        {a.riskLevel}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {analyses
+                  .filter((a) => (companyFilter === "ALL" ? true : a.companyName === companyFilter))
+                  .filter((a) => (riskFilter === "ALL" ? true : a.riskLevel === riskFilter))
+                  .slice(0, 5)
+                  .map((a) => {
+                    const getDateStr = (rec) => {
+                      const val = rec?.timestamp || rec?.date || rec?.createdAt || rec?.created_at || rec?.analysisDate;
+                      if (!val) return "-";
+                      try {
+                        return new Date(val).toLocaleDateString();
+                      } catch {
+                        return "-";
+                      }
+                    };
+
+                    const dateStr = getDateStr(a);
+                    const score = Number(a.esgScore || 0);
+
+                    return (
+                      <TableRow key={a.analysisId}>
+                        <TableCell className="font-medium">{a.companyName}</TableCell>
+
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 text-sm font-medium">{score}</div>
+                            <div className="w-44 bg-muted rounded-full h-2 overflow-hidden">
+                              <div
+                                className="h-2 rounded-full"
+                                style={{ width: `${Math.max(0, Math.min(100, score))}%`, background: 'var(--color-primary)' }}
+                              />
+                            </div>
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          <span
+                            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold"
+                            style={{
+                              background: RISK_COLORS[a.riskLevel] || '#6b7280',
+                              color: '#fff',
+                            }}
+                          >
+                            {a.riskLevel}
+                          </span>
+                        </TableCell>
+
+                        <TableCell className="text-right">{dateStr}</TableCell>
+                      </TableRow>
+                    );
+                  })}
               </TableBody>
             </Table>
           )}
