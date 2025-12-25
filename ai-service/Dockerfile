@@ -1,29 +1,27 @@
-# Use Python 3.11 (matches your local version)
 FROM python:3.11-slim
 
-# Set working directory
+# Prevent Python from writing pyc files
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
 WORKDIR /app
 
-# Install minimal system dependencies required by spaCy
+# System deps (required for torch & spacy)
 RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
     build-essential \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first (for caching)
+# Copy requirements first (better caching)
 COPY requirements.txt .
 
-# Upgrade pip
 RUN pip install --upgrade pip
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy rest of the code
+# Copy app code
 COPY . .
 
-# Expose FastAPI port
-EXPOSE 8001
-
-# Start FastAPI app
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+# Render provides PORT automatically
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10000"]

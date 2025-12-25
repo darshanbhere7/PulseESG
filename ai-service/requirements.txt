@@ -1,5 +1,13 @@
-fastapi
-uvicorn
-spacy
-python-dotenv
+fastapi==0.110.0
+uvicorn[standard]==0.27.1
+
+python-dotenv==1.0.1
+
+transformers==4.39.3
+torch==2.2.1
+
+spacy==3.7.2
+scikit-learn==1.4.1.post1
+
+# spaCy model (prebuilt wheel – NO compilation)
 https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl

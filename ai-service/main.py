@@ -5,14 +5,18 @@ from dotenv import load_dotenv
 import os
 
 # ===============================
-# LOAD ENV
+# LOAD ENVIRONMENT VARIABLES
 # ===============================
 load_dotenv()
 
-APP_PORT = int(os.getenv("AI_SERVICE_PORT", 8001))
+SPACY_MODEL = os.getenv("SPACY_MODEL", "en_core_web_sm")
+SENTIMENT_MODEL = os.getenv(
+    "SENTIMENT_MODEL",
+    "distilbert-base-uncased-finetuned-sst-2-english"
+)
 
 # ===============================
-# FASTAPI APP
+# FASTAPI APP INITIALIZATION
 # ===============================
 app = FastAPI(
     title="ESG AI Service",
@@ -20,25 +24,33 @@ app = FastAPI(
     version="1.0.0"
 )
 
-
 # ===============================
 # HEALTH CHECK
 # ===============================
 @app.get("/health")
 def health_check():
-    return {"status": "UP"}
-
+    return {
+        "status": "UP",
+        "service": "PulseESG AI Service",
+        "models": {
+            "spacy": SPACY_MODEL,
+            "sentiment": SENTIMENT_MODEL
+        }
+    }
 
 # ===============================
 # ESG ANALYSIS ENDPOINT
 # ===============================
 @app.post("/analyze", response_model=ESGResponse)
 def analyze_esg(request: ESGRequest):
-
     """
     Core ESG intelligence endpoint.
-    Accepts unstructured ESG-related text and returns
-    risk-oriented ESG signals (not sentiment).
+
+    Accepts unstructured ESG-related text and returns:
+    - ESG Score
+    - Risk Level
+    - ESG Signals
+    - Explanation
     """
 
     result = analyze_text(request.text)
