@@ -1,6 +1,9 @@
 {
   "version": 2,
   "routes": [
-    { "src": "/(.*)", "dest": "/index.html" }
+    { "src": "^/assets/(.*)", "dest": "/assets/$1" },
+    { "src": "^/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|map))$", "dest": "/$1" },
+    { "src": "^/favicon\\.(ico|png)$", "dest": "/favicon.$1" },
+    { "src": "^/(.*)$", "dest": "/index.html" }
   ]
 }
