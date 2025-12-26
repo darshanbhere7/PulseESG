@@ -17,9 +17,9 @@ import java.util.Map;
 public class AIClient {
 
     private static final Logger log = LoggerFactory.getLogger(AIClient.class);
-    private static final int MAX_RETRIES = 3;
-    private static final long INITIAL_RETRY_DELAY_MS = 1000; // 1 second
-    private static final int CONNECT_TIMEOUT_MS = 30000; // 30 seconds
+    private static final int MAX_RETRIES = 5; // Increased retries for Render cold starts
+    private static final long INITIAL_RETRY_DELAY_MS = 2000; // 2 seconds initial delay
+    private static final int CONNECT_TIMEOUT_MS = 60000; // 60 seconds for Render cold starts
     private static final int READ_TIMEOUT_MS = 600000; // 600 seconds (10 minutes) to allow AI processing on Render
 
     private final String aiUrl;
@@ -113,12 +113,17 @@ public class AIClient {
                 lastException = new RuntimeException(userFriendlyError, e);
 
                 // Retry on 502, 503, 504 (gateway/bad gateway/service unavailable)
+                // Also retry on 500 for Render cold start issues
                 if (status != null && (status == HttpStatus.BAD_GATEWAY || 
                                        status == HttpStatus.SERVICE_UNAVAILABLE || 
-                                       status == HttpStatus.GATEWAY_TIMEOUT)) {
+                                       status == HttpStatus.GATEWAY_TIMEOUT ||
+                                       status == HttpStatus.INTERNAL_SERVER_ERROR)) {
                     if (attempt < MAX_RETRIES - 1) {
                         long delay = INITIAL_RETRY_DELAY_MS * (long) Math.pow(2, attempt); // Exponential backoff
-                        log.info("Retrying after {}ms...", delay);
+                        // Cap delay at 30 seconds
+                        delay = Math.min(delay, 30000);
+                        log.info("AI service returned {} (attempt {}/{}). Retrying after {}ms...", 
+                                status, attempt + 1, MAX_RETRIES, delay);
                         try {
                             Thread.sleep(delay);
                         } catch (InterruptedException ie) {

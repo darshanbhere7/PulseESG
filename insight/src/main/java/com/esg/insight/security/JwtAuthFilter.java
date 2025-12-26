@@ -14,11 +14,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
 
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
     private final JwtUtil jwtUtil;
 
     @Override
@@ -59,12 +62,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         );
 
                         SecurityContextHolder.getContext().setAuthentication(authentication);
+                    } else {
+                        // Log warning if email or role is missing
+                        log.warn("Token validation passed but email or role is missing. Email: {}, Role: {}", email, role);
                     }
+                } else {
+                    // Log warning if token validation failed
+                    log.warn("Token validation failed for request: {}", request.getRequestURI());
                 }
             } catch (Exception e) {
                 // Log error but continue - Spring Security will handle unauthorized requests
                 // This prevents exceptions from breaking the filter chain
                 // If token is invalid, authentication won't be set and Spring Security will return 401
+                log.error("Error processing JWT token: {}", e.getMessage());
             }
         }
 
