@@ -71,7 +71,7 @@ public class AIClient {
         HttpEntity<Map<String, String>> entity = new HttpEntity<>(payload, headers);
 
         int attempt = 0;
-        Exception lastException = null;
+        RuntimeException lastException = null;
 
         while (attempt < MAX_RETRIES) {
             try {
