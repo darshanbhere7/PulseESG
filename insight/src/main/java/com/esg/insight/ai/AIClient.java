@@ -18,8 +18,8 @@ public class AIClient {
 
     private static final Logger log = LoggerFactory.getLogger(AIClient.class);
     private static final int MAX_RETRIES = 5; // Increased retries for Render cold starts
-    private static final long INITIAL_RETRY_DELAY_MS = 2000; // 2 seconds initial delay
-    private static final int CONNECT_TIMEOUT_MS = 60000; // 60 seconds for Render cold starts
+    private static final long INITIAL_RETRY_DELAY_MS = 300000; // 5 minutes initial delay for Render cold starts
+    private static final int CONNECT_TIMEOUT_MS = 600000; // 600 seconds (10 minutes) for Render cold starts
     private static final int READ_TIMEOUT_MS = 600000; // 600 seconds (10 minutes) to allow AI processing on Render
 
     private final String aiUrl;
@@ -120,10 +120,10 @@ public class AIClient {
                                        status == HttpStatus.INTERNAL_SERVER_ERROR)) {
                     if (attempt < MAX_RETRIES - 1) {
                         long delay = INITIAL_RETRY_DELAY_MS * (long) Math.pow(2, attempt); // Exponential backoff
-                        // Cap delay at 30 seconds
-                        delay = Math.min(delay, 30000);
-                        log.info("AI service returned {} (attempt {}/{}). Retrying after {}ms...", 
-                                status, attempt + 1, MAX_RETRIES, delay);
+                        // Cap delay at 10 minutes (600 seconds) for Render cold starts
+                        delay = Math.min(delay, 600000);
+                        log.info("AI service returned {} (attempt {}/{}). Retrying after {}ms ({} minutes)...", 
+                                status, attempt + 1, MAX_RETRIES, delay, delay / 60000);
                         try {
                             Thread.sleep(delay);
                         } catch (InterruptedException ie) {
@@ -148,7 +148,10 @@ public class AIClient {
                 // Retry on connection/timeout errors
                 if (attempt < MAX_RETRIES - 1) {
                     long delay = INITIAL_RETRY_DELAY_MS * (long) Math.pow(2, attempt); // Exponential backoff
-                    log.info("Retrying after {}ms...", delay);
+                    // Cap delay at 10 minutes (600 seconds) for Render cold starts
+                    delay = Math.min(delay, 600000);
+                    log.info("Connection error (attempt {}/{}). Retrying after {}ms ({} minutes)...", 
+                            attempt + 1, MAX_RETRIES, delay, delay / 60000);
                     try {
                         Thread.sleep(delay);
                     } catch (InterruptedException ie) {

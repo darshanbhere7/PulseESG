@@ -198,17 +198,20 @@ function Analyze() {
       HIGH: {
         variant: "destructive",
         icon: AlertTriangle,
-        border: "border-red-200",
+        border: "border-destructive/50 dark:border-destructive/30",
+        bg: "bg-destructive/5 dark:bg-destructive/10",
       },
       MEDIUM: {
         variant: "warning",
         icon: TrendingUp,
-        border: "border-amber-200",
+        border: "border-yellow-500/50 dark:border-yellow-500/30",
+        bg: "bg-yellow-500/5 dark:bg-yellow-500/10",
       },
       LOW: {
         variant: "success",
         icon: CheckCircle2,
-        border: "border-green-200",
+        border: "border-green-500/50 dark:border-green-500/30",
+        bg: "bg-green-500/5 dark:bg-green-500/10",
       },
     };
     return configs[level] || configs.MEDIUM;
@@ -230,11 +233,11 @@ function Analyze() {
     if (!items || items.length === 0) return null;
 
     return (
-      <div className="space-y-2">
-        <h4 className="font-semibold">{label}</h4>
+      <div className="space-y-3">
+        <h4 className="font-semibold text-foreground">{label}</h4>
         <div className="flex flex-wrap gap-2">
           {items.map((item, i) => (
-            <Badge key={i} variant={color}>
+            <Badge key={i} variant={color} className="text-xs">
               {item}
             </Badge>
           ))}
@@ -247,9 +250,9 @@ function Analyze() {
     <div className="pt-24 px-6 pb-10 space-y-8 max-w-7xl mx-auto">
       {/* HEADER */}
       <div className="flex items-center gap-3">
-        <Shield className="h-7 w-7" />
+        <Shield className="h-7 w-7 text-foreground" />
         <div>
-          <h1 className="text-3xl font-bold">ESG Risk Analysis</h1>
+          <h1 className="text-3xl font-bold text-foreground">ESG Risk Analysis</h1>
           <p className="text-sm text-muted-foreground">
             Event-based ESG intelligence for informed decisions
           </p>
@@ -308,40 +311,40 @@ function Analyze() {
 
       {/* LOADING CARD */}
       {loading && (
-        <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
+        <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 dark:from-primary/10 dark:via-primary/20 dark:to-primary/10">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5 animate-pulse text-blue-600" />
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <Activity className="h-5 w-5 animate-pulse text-primary" />
               AI Analysis in Progress
             </CardTitle>
-            <CardDescription>
-              Our AI is analyzing your ESG content. This may take a few minutes, especially if the service is starting up.
+            <CardDescription className="text-muted-foreground">
+              Our AI is analyzing your ESG content. This may take several minutes, especially if the service is starting up.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <div className="relative">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                <Zap className="h-4 w-4 absolute -top-1 -right-1 animate-pulse text-yellow-500" />
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                <Zap className="h-5 w-5 absolute -top-1 -right-1 animate-pulse text-primary" />
               </div>
               <div className="flex-1">
-                <p className="font-medium text-sm">{loadingMessage}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Elapsed time: {formatTime(elapsedTime)}
+                <p className="font-semibold text-base text-foreground">{loadingMessage}</p>
+                <p className="text-sm text-muted-foreground mt-1.5">
+                  Elapsed time: <span className="font-medium">{formatTime(elapsedTime)}</span>
                 </p>
               </div>
             </div>
             
             <Progress 
-              value={Math.min((elapsedTime / 300) * 100, 95)} 
-              className="h-2"
+              value={Math.min((elapsedTime / 600) * 100, 95)} 
+              className="h-2.5"
             />
             
-            <div className="flex items-start gap-2 text-xs text-muted-foreground bg-blue-100 dark:bg-blue-900/30 p-3 rounded-md">
-              <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="font-medium mb-1">Why is this taking time?</p>
-                <p>
+            <div className="flex items-start gap-3 text-sm bg-muted/50 dark:bg-muted/30 border border-border rounded-lg p-4">
+              <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0 text-muted-foreground" />
+              <div className="flex-1">
+                <p className="font-semibold mb-1.5 text-foreground">Why is this taking time?</p>
+                <p className="text-muted-foreground leading-relaxed">
                   The AI service may be starting up (cold start) or processing complex analysis. 
                   Please wait - the analysis will complete automatically. You can keep this page open.
                 </p>
@@ -353,29 +356,38 @@ function Analyze() {
 
       {/* RESULT */}
       {result && (
-        <Card className={`border-2 ${riskConfig.border}`}>
+        <Card className={`border-2 ${riskConfig.border} ${riskConfig.bg}`}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-foreground">
               <RiskIcon className="h-5 w-5" />
               Analysis Result
             </CardTitle>
           </CardHeader>
 
-          <CardContent className="space-y-4">
-            <p>
-              <strong>Company:</strong> {result.company}
-            </p>
-            <p>
-              <strong>ESG Score:</strong> {result.esgScore}
-            </p>
+          <CardContent className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">Company</p>
+                <p className="text-lg font-semibold text-foreground">{result.company}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground">ESG Score</p>
+                <p className="text-lg font-semibold text-foreground">{result.esgScore}</p>
+              </div>
+            </div>
 
-            <Badge variant={riskConfig.variant}>
-              {result.riskLevel} RISK
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant={riskConfig.variant} className="text-sm font-semibold px-3 py-1">
+                {result.riskLevel} RISK
+              </Badge>
+            </div>
 
-            <Separator />
+            <Separator className="my-2" />
 
-            <p>{result.explanation}</p>
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">Analysis</p>
+              <p className="text-foreground leading-relaxed">{result.explanation}</p>
+            </div>
 
             {renderSignals(result.signals, "positive")}
             {renderSignals(result.signals, "negative")}
