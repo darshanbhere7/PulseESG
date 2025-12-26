@@ -145,16 +145,11 @@ function History() {
     }));
 
     // Score distribution: Group by actual risk levels from backend (HIGH, MEDIUM, LOW)
-    const riskDistribution = analyses.reduce((acc, a) => {
-      const riskLevel = a.riskLevel || "UNKNOWN";
-      acc[riskLevel] = (acc[riskLevel] || 0) + 1;
-      return acc;
-    }, {});
-
+    // Reuse the existing riskDist object which already has the counts by risk level
     // Ensure HIGH, MEDIUM, LOW are always present (even if count is 0)
     const scoreDistribution = ["HIGH", "MEDIUM", "LOW"].map((risk) => ({
       riskLevel: risk,
-      count: riskDistribution[risk] || 0,
+      count: riskDist[risk] || 0,
     }));
 
     // Timeline data (last 10 analyses)
