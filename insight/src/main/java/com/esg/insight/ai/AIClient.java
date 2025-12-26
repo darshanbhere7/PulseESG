@@ -19,7 +19,8 @@ public class AIClient {
     private final String aiUrl;
     private final RestTemplate restTemplate;
 
-    public AIClient(@Value("${AI_SERVICE_URL:http://localhost:8000/analyze}") String aiUrl) {
+    public AIClient(
+            @Value("${AI_SERVICE_URL:http://localhost:8000/analyze}") String aiUrl) {
         if (aiUrl == null || aiUrl.isEmpty()) {
             throw new IllegalStateException("AI_SERVICE_URL environment variable is not set");
         }

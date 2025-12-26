@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from schemas import ESGRequest, ESGResponse
 from nlp import analyze_text
 from dotenv import load_dotenv
@@ -22,6 +23,17 @@ app = FastAPI(
     title="ESG AI Service",
     description="AI-driven ESG risk intelligence microservice (ISS / MSCI style)",
     version="1.0.0"
+)
+
+# ===============================
+# CORS MIDDLEWARE (REQUIRED FOR RENDER SERVICE-TO-SERVICE)
+# ===============================
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for service-to-service communication
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ===============================
