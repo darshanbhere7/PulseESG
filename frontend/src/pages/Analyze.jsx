@@ -68,8 +68,10 @@ function Analyze() {
       });
 
       setResult(res.data);
-    } catch {
-      setError("ESG analysis failed");
+    } catch (err) {
+      const errorMessage = err?.response?.data?.error || err?.response?.data?.message || "ESG analysis failed";
+      setError(errorMessage);
+      console.error("Analysis error:", err);
     } finally {
       setLoading(false);
     }

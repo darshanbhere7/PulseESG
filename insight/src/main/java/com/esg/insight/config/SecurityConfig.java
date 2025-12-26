@@ -101,7 +101,7 @@ public class SecurityConfig {
             config.setAllowedOrigins(List.of(
                     "http://localhost:5173",
                     "http://localhost:3000",
-                    "https://pulse-esg.vercel.app/",
+                    "https://pulse-esg.vercel.app",
                     frontendUrl
             ));
         } else {
@@ -109,7 +109,7 @@ public class SecurityConfig {
             config.setAllowedOrigins(List.of(
                     "http://localhost:5173",
                     "http://localhost:3000",
-                    "https://pulse-esg.vercel.app/"
+                    "https://pulse-esg.vercel.app"
             ));
         }
 

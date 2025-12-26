@@ -32,4 +32,16 @@ public class CompanyService {
     public List<Company> getAllCompanies() {
         return companyRepository.findAll();
     }
+
+    // ===============================
+    // ADMIN ONLY — DELETE COMPANY
+    // ===============================
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public void deleteCompany(Long id) {
+        if (!companyRepository.existsById(id)) {
+            throw new IllegalArgumentException("Company not found");
+        }
+        companyRepository.deleteById(id);
+    }
 }
