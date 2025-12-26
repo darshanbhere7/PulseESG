@@ -132,7 +132,10 @@ export default function Overview() {
   // ESG Pillar breakdown (mock data based on scores)
 
 
+  // Fallback function only - prefer riskLevel from backend AI service
+  // This should only be used when riskLevel is truly missing from backend data
   const getRiskLevelFromScore = (score) => {
+    // This is a last resort fallback - backend should always provide riskLevel
     const s = Number(score || 0);
     if (s <= 35) return "HIGH";
     if (s <= 65) return "MEDIUM";
@@ -160,11 +163,14 @@ export default function Overview() {
       
       if (!companyName || isNaN(score)) return;
       
+      // Prefer riskLevel from backend, only use fallback if truly missing
+      const riskLevel = a.riskLevel || (score !== undefined && score !== null ? getRiskLevelFromScore(score) : "UNKNOWN");
+      
       if (!companyMap.has(companyName)) {
         companyMap.set(companyName, {
           name: companyName,
           score: score,
-          riskLevel: a.riskLevel || getRiskLevelFromScore(score),
+          riskLevel: riskLevel,
           timestamp: timestamp ? new Date(timestamp).getTime() : 0,
         });
       } else {
@@ -177,7 +183,7 @@ export default function Overview() {
           companyMap.set(companyName, {
             name: companyName,
             score: score,
-            riskLevel: a.riskLevel || getRiskLevelFromScore(score),
+            riskLevel: riskLevel,
             timestamp: newTs,
           });
         }
@@ -603,7 +609,8 @@ export default function Overview() {
 
                         const dateStr = getDateStr(a);
                         const score = Number(a.esgScore || 0);
-                        const displayRisk = a.riskLevel || getRiskLevelFromScore(score);
+                        // Prefer riskLevel from backend AI service, only use fallback if missing
+                        const displayRisk = a.riskLevel || (score !== undefined && score !== null ? getRiskLevelFromScore(score) : "UNKNOWN");
 
                         return (
                           <TableRow

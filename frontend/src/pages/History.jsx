@@ -144,18 +144,17 @@ function History() {
       value,
     }));
 
-    // Score distribution (use new classification thresholds)
-    const scoreRanges = { "0-35": 0, "36-65": 0, "66-100": 0 };
-    analyses.forEach((a) => {
-      const score = Number(a.esgScore || 0);
-      if (score <= 35) scoreRanges["0-35"]++;
-      else if (score <= 65) scoreRanges["36-65"]++;
-      else scoreRanges["66-100"]++;
-    });
+    // Score distribution: Group by actual risk levels from backend (HIGH, MEDIUM, LOW)
+    const riskDistribution = analyses.reduce((acc, a) => {
+      const riskLevel = a.riskLevel || "UNKNOWN";
+      acc[riskLevel] = (acc[riskLevel] || 0) + 1;
+      return acc;
+    }, {});
 
-    const scoreDistribution = Object.entries(scoreRanges).map(([range, count]) => ({
-      range,
-      count,
+    // Ensure HIGH, MEDIUM, LOW are always present (even if count is 0)
+    const scoreDistribution = ["HIGH", "MEDIUM", "LOW"].map((risk) => ({
+      riskLevel: risk,
+      count: riskDistribution[risk] || 0,
     }));
 
     // Timeline data (last 10 analyses)
@@ -186,7 +185,8 @@ function History() {
           return rAcc;
         }, {});
         const mostCommonRisk = Object.entries(riskCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
-        const riskLevel = mostCommonRisk || getRiskLevelFromScore(avgScore) || "UNKNOWN";
+        // Use actual risk level from backend, only fallback to score-based if truly missing
+        const riskLevel = mostCommonRisk || "UNKNOWN";
         return {
           company,
           avgScore,
@@ -452,7 +452,7 @@ function History() {
                       Score Distribution
                     </CardTitle>
                     <CardDescription className="text-sm">
-                      ESG score ranges across all analyses
+                      Distribution by risk level (from AI analysis)
                     </CardDescription>
                   </CardHeader>
 
@@ -461,7 +461,7 @@ function History() {
                       <BarChart data={chartData.scoreDistribution}>
                         <CartesianGrid strokeDasharray="3 3" />
 
-                        <XAxis dataKey="range" />
+                        <XAxis dataKey="riskLevel" />
                         <YAxis />
 
                         <Tooltip
@@ -475,12 +475,7 @@ function History() {
 
                         <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                           {chartData.scoreDistribution.map((entry, i) => {
-                            const rangeToRisk = {
-                              "0-35": "HIGH",
-                              "36-65": "MEDIUM",
-                              "66-100": "LOW",
-                            };
-                            const risk = rangeToRisk[entry.range] || "UNKNOWN";
+                            const risk = entry.riskLevel || "UNKNOWN";
                             return (
                               <Cell
                                 key={`cell-score-${i}`}
@@ -647,7 +642,8 @@ function History() {
 
                         <TableBody>
                           {filteredAnalyses.map((a) => {
-                            const displayRisk = a.riskLevel || getRiskLevelFromScore(a.esgScore);
+                            // Prefer riskLevel from backend AI service, only use fallback if missing
+                            const displayRisk = a.riskLevel || (a.esgScore !== undefined && a.esgScore !== null ? getRiskLevelFromScore(a.esgScore) : "UNKNOWN");
                             return (
                               <TableRow
                                 key={a.analysisId}
