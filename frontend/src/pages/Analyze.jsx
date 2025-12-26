@@ -69,7 +69,46 @@ function Analyze() {
 
       setResult(res.data);
     } catch (err) {
-      const errorMessage = err?.response?.data?.error || err?.response?.data?.message || "ESG analysis failed";
+      // Use user-friendly message from axios interceptor, or fallback to extracting from response
+      let errorMessage = err?.userFriendlyMessage;
+      
+      if (!errorMessage && err?.response?.data) {
+        const errorData = err.response.data;
+        
+        // Safely extract error message, avoiding HTML
+        if (typeof errorData === 'string') {
+          // Check if it's HTML
+          if (!errorData.trim().startsWith('<!DOCTYPE') && 
+              !errorData.trim().startsWith('<html') &&
+              !errorData.includes('<html')) {
+            // Remove any HTML tags and use if reasonable
+            const clean = errorData.replace(/<[^>]*>/g, '').trim();
+            if (clean.length > 0 && clean.length < 500) {
+              errorMessage = clean;
+            }
+          }
+        } else if (typeof errorData === 'object') {
+          errorMessage = errorData.error || errorData.message;
+          // Sanitize if it contains HTML
+          if (errorMessage && typeof errorMessage === 'string') {
+            if (errorMessage.includes('<html') || errorMessage.includes('<!DOCTYPE')) {
+              errorMessage = null; // Will use fallback
+            } else {
+              errorMessage = errorMessage.replace(/<[^>]*>/g, '').trim();
+            }
+          }
+        }
+      }
+      
+      // Final fallback
+      if (!errorMessage) {
+        if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+          errorMessage = "Request timed out. The AI service may be processing your request. Please try again.";
+        } else {
+          errorMessage = "ESG analysis failed. Please try again later.";
+        }
+      }
+      
       setError(errorMessage);
       console.error("Analysis error:", err);
     } finally {

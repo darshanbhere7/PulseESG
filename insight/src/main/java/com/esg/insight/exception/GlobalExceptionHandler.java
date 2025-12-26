@@ -46,11 +46,56 @@ public class GlobalExceptionHandler {
         if (ex instanceof AccessDeniedException || ex instanceof AuthenticationCredentialsNotFoundException) {
             throw ex;
         }
+        
+        // Check if this is an AI service error
+        String message = ex.getMessage();
+        if (message != null && (message.contains("AI service") || message.contains("Failed to connect to AI service"))) {
+            // Return user-friendly message for AI service errors
+            String userFriendlyMessage = sanitizeErrorMessage(message);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of(
+                            "timestamp", LocalDateTime.now(),
+                            "error", userFriendlyMessage
+                    ));
+        }
+        
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(Map.of(
                         "timestamp", LocalDateTime.now(),
-                        "error", ex.getMessage() != null ? ex.getMessage() : "Bad request"
+                        "error", message != null ? sanitizeErrorMessage(message) : "Bad request"
                 ));
+    }
+    
+    /**
+     * Sanitize error messages to remove HTML and technical details
+     */
+    private String sanitizeErrorMessage(String message) {
+        if (message == null) {
+            return "An error occurred";
+        }
+        
+        // Remove HTML tags if present
+        String sanitized = message.replaceAll("<[^>]*>", "");
+        
+        // Remove URLs if present (keep them short)
+        sanitized = sanitized.replaceAll("https?://[^\\s]+", "[AI Service URL]");
+        
+        // If message is too long or contains HTML remnants, provide generic message
+        if (sanitized.length() > 200 || sanitized.contains("<!DOCTYPE") || sanitized.contains("<html")) {
+            if (message.contains("502") || message.contains("Bad Gateway")) {
+                return "AI service is temporarily unavailable. Please try again in a moment.";
+            } else if (message.contains("503") || message.contains("Service Unavailable")) {
+                return "AI service is currently busy. Please try again shortly.";
+            } else if (message.contains("504") || message.contains("Gateway Timeout")) {
+                return "AI service took too long to respond. Please try again.";
+            } else if (message.contains("timeout")) {
+                return "AI service is taking longer than expected. Please try again.";
+            } else {
+                return "AI service encountered an error. Please try again later.";
+            }
+        }
+        
+        return sanitized.trim();
     }
 
     @ExceptionHandler(Exception.class)
