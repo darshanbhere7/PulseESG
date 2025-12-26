@@ -139,18 +139,65 @@ export default function Overview() {
     return "LOW";
   };
 
+  // Helper function to get timestamp from analysis record
+  const getTs = (rec) => rec?.timestamp || rec?.date || rec?.createdAt || rec?.created_at || rec?.analysisDate || null;
+
   const pieData = Object.keys(riskCounts).map((key) => ({
     name: key,
     value: riskCounts[key],
   }));
 
-  const barData = analyses.slice(0, 6).map((a) => ({
-    name: a.companyName,
-    score: a.esgScore,
-    riskLevel: a.riskLevel || "LOW",
-  }));
+  // Get unique companies with their latest/highest scores for performance charts
+  
+  const companyPerformanceData = (() => {
+    // Group analyses by company and get the latest analysis for each company
+    const companyMap = new Map();
+    
+    analyses.forEach((a) => {
+      const companyName = a.companyName;
+      const score = Number(a.esgScore || 0);
+      const timestamp = getTs(a);
+      
+      if (!companyName || isNaN(score)) return;
+      
+      if (!companyMap.has(companyName)) {
+        companyMap.set(companyName, {
+          name: companyName,
+          score: score,
+          riskLevel: a.riskLevel || getRiskLevelFromScore(score),
+          timestamp: timestamp ? new Date(timestamp).getTime() : 0,
+        });
+      } else {
+        const existing = companyMap.get(companyName);
+        const existingTs = existing.timestamp || 0;
+        const newTs = timestamp ? new Date(timestamp).getTime() : 0;
+        
+        // Use the most recent analysis for each company
+        if (newTs > existingTs) {
+          companyMap.set(companyName, {
+            name: companyName,
+            score: score,
+            riskLevel: a.riskLevel || getRiskLevelFromScore(score),
+            timestamp: newTs,
+          });
+        }
+      }
+    });
+    
+    return Array.from(companyMap.values());
+  })();
 
-  // Build trend data from real analyses (last 6 analyses by timestamp)
+  // Top performers: highest scores, descending order (top 5)
+  const topPerformersData = [...companyPerformanceData]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+
+  // Needs attention: lowest scores, ascending order (top 5 - highest risk first)
+  const needsAttentionData = [...companyPerformanceData]
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 5);
+
+  // Build trend data: Average ESG score over time (grouped by time periods)
   const trendData = (() => {
     if (!analyses || analyses.length === 0) {
       return [
@@ -163,25 +210,59 @@ export default function Overview() {
       ];
     }
 
-    const getTs = (rec) => rec?.timestamp || rec?.date || rec?.createdAt || rec?.created_at || rec?.analysisDate || null;
+    // Filter analyses with valid scores and timestamps
+    const validAnalyses = analyses
+      .filter((a) => {
+        const score = a?.esgScore;
+        const ts = getTs(a);
+        return score !== undefined && score !== null && ts;
+      })
+      .map((a) => ({
+        score: Number(a.esgScore || 0),
+        timestamp: new Date(getTs(a)).getTime(),
+        date: new Date(getTs(a)),
+      }));
 
-    const sorted = [...analyses]
-      .filter((a) => (a?.esgScore !== undefined && getTs(a)))
-      .sort((a, b) => new Date(getTs(a)) - new Date(getTs(b)));
+    if (validAnalyses.length === 0) {
+      return [{ month: "No Data", score: 0 }];
+    }
 
-    const lastN = 6;
-    const slice = sorted.slice(-lastN);
-
-    return slice.map((a) => {
-      const ts = getTs(a);
-      let label = "";
-      try {
-        label = new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-      } catch {
-        label = String(ts);
+    // Group by month and calculate average score for each month
+    const monthlyData = new Map();
+    
+    validAnalyses.forEach((a) => {
+      const year = a.date.getFullYear();
+      const month = a.date.getMonth();
+      const key = `${year}-${month}`;
+      
+      if (!monthlyData.has(key)) {
+        monthlyData.set(key, {
+          key,
+          year,
+          month,
+          scores: [],
+          date: a.date,
+        });
       }
-      return { month: label, score: Number(a.esgScore || 0) };
+      
+      monthlyData.get(key).scores.push(a.score);
     });
+
+    // Convert to array, calculate averages, and sort by date
+    const trendArray = Array.from(monthlyData.values())
+      .map((item) => {
+        const avgScore = item.scores.reduce((sum, s) => sum + s, 0) / item.scores.length;
+        const monthName = item.date.toLocaleDateString(undefined, { month: "short", year: "numeric" });
+        return {
+          month: monthName,
+          score: Math.round(avgScore),
+          timestamp: item.date.getTime(),
+        };
+      })
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .slice(-6); // Last 6 months
+
+    return trendArray.length > 0 ? trendArray : [{ month: "No Data", score: 0 }];
   })();
 
   const CustomTooltip = ({ active, payload }) => {
@@ -381,57 +462,59 @@ export default function Overview() {
             </TabsList>
 
             <TabsContent value="top" className="mt-6">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart
-                  data={[...barData].sort((a, b) => b.score - a.score).slice(0, 5)}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      color: "hsl(var(--foreground))",
-                    }}
-                  />
-                  <Bar dataKey="score" radius={[8, 8, 0, 0]}>
-                    {barData
-                      .sort((a, b) => b.score - a.score)
-                      .slice(0, 5)
-                      .map((entry, i) => (
+              {topPerformersData.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  No performance data available
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={topPerformersData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        color: "hsl(var(--foreground))",
+                      }}
+                    />
+                    <Bar dataKey="score" radius={[8, 8, 0, 0]}>
+                      {topPerformersData.map((entry, i) => (
                         <Cell key={i} fill={RISK_COLORS[entry.riskLevel]} />
                       ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </TabsContent>
 
             <TabsContent value="bottom" className="mt-6">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart
-                  data={[...barData].sort((a, b) => a.score - b.score).slice(0, 5)}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      color: "hsl(var(--foreground))",
-                    }}
-                  />
-                  <Bar dataKey="score" radius={[8, 8, 0, 0]}>
-                    {barData
-                      .sort((a, b) => a.score - b.score)
-                      .slice(0, 5)
-                      .map((entry, i) => (
+              {needsAttentionData.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  No performance data available
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={needsAttentionData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        color: "hsl(var(--foreground))",
+                      }}
+                    />
+                    <Bar dataKey="score" radius={[8, 8, 0, 0]}>
+                      {needsAttentionData.map((entry, i) => (
                         <Cell key={i} fill={RISK_COLORS[entry.riskLevel]} />
                       ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </TabsContent>
           </Tabs>
         </CardContent>
@@ -497,6 +580,15 @@ export default function Overview() {
                     {analyses
                       .filter((a) => (companyFilter === "all" ? true : a.companyName === companyFilter))
                       .filter((a) => (riskFilter === "all" ? true : a.riskLevel === riskFilter))
+                      .sort((a, b) => {
+                        // Sort by timestamp descending (most recent first)
+                        const tsA = getTs(a);
+                        const tsB = getTs(b);
+                        if (!tsA && !tsB) return 0;
+                        if (!tsA) return 1;
+                        if (!tsB) return -1;
+                        return new Date(tsB).getTime() - new Date(tsA).getTime();
+                      })
                       .slice(0, 5)
                       .map((a) => {
                         const getDateStr = (rec) => {
