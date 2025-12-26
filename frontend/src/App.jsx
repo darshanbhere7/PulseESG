@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -14,7 +15,7 @@ import Profile from "./pages/Profile";
 function App() {
   return (
     <BrowserRouter>
-      {/* Navbar will decide internally when to show */}
+      {/* Navbar decides internally when to show */}
       <Navbar />
 
       <Routes>
@@ -70,6 +71,9 @@ function App() {
           }
         />
       </Routes>
+
+      {/* Footer decides internally when to show */}
+      <Footer />
     </BrowserRouter>
   );
 }

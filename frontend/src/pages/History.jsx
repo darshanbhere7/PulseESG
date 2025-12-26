@@ -538,7 +538,7 @@ function History() {
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
-                </CardContent>
+                </CardContent>  
               </Card>
 
             </TabsContent>
