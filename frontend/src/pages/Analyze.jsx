@@ -135,7 +135,7 @@ function Analyze() {
         <div>
           <h1 className="text-3xl font-bold">ESG Risk Analysis</h1>
           <p className="text-sm text-muted-foreground">
-            Event-based ESG intelligence (ISS / MSCI style)
+            Event-based ESG intelligence for informed decisions
           </p>
         </div>
       </div>

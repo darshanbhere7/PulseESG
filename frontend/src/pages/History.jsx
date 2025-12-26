@@ -30,10 +30,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
-import { 
-  Loader2, 
-  CalendarDays, 
-  TrendingUp, 
+import {
+  Loader2,
+  CalendarDays,
+  TrendingUp,
   TrendingDown,
   BarChart3,
   PieChart as PieChartIcon,
@@ -58,6 +58,24 @@ import {
 } from "recharts";
 
 function History() {
+  const [isDark, setIsDark] = useState(
+    typeof document !== "undefined" && document.documentElement.classList.contains("dark")
+  );
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const update = () => setIsDark(document.documentElement.classList.contains("dark"));
+    const obs = new MutationObserver(() => update());
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    const mq = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)");
+    const mqHandler = (e) => update();
+    if (mq && mq.addEventListener) mq.addEventListener("change", mqHandler);
+    return () => {
+      obs.disconnect();
+      if (mq && mq.removeEventListener) mq.removeEventListener("change", mqHandler);
+    };
+  }, []);
+
   const [analyses, setAnalyses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -126,14 +144,13 @@ function History() {
       value,
     }));
 
-    // Score distribution
-    const scoreRanges = { "0-30": 0, "31-50": 0, "51-70": 0, "71-100": 0 };
+    // Score distribution (use new classification thresholds)
+    const scoreRanges = { "0-35": 0, "36-65": 0, "66-100": 0 };
     analyses.forEach((a) => {
-      const score = a.esgScore || 0;
-      if (score <= 30) scoreRanges["0-30"]++;
-      else if (score <= 50) scoreRanges["31-50"]++;
-      else if (score <= 70) scoreRanges["51-70"]++;
-      else scoreRanges["71-100"]++;
+      const score = Number(a.esgScore || 0);
+      if (score <= 35) scoreRanges["0-35"]++;
+      else if (score <= 65) scoreRanges["36-65"]++;
+      else scoreRanges["66-100"]++;
     });
 
     const scoreDistribution = Object.entries(scoreRanges).map(([range, count]) => ({
@@ -154,16 +171,28 @@ function History() {
     // Company averages
     const companyScores = analyses.reduce((acc, a) => {
       const name = a.companyName;
-      if (!acc[name]) acc[name] = [];
-      acc[name].push(a.esgScore);
+      if (!acc[name]) acc[name] = { scores: [], risks: [] };
+      acc[name].scores.push(a.esgScore || 0);
+      acc[name].risks.push(a.riskLevel || "UNKNOWN");
       return acc;
     }, {});
 
     const companyAverages = Object.entries(companyScores)
-      .map(([company, scores]) => ({
-        company,
-        avgScore: Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length),
-      }))
+      .map(([company, data]) => {
+        const avgScore = Math.round(data.scores.reduce((sum, s) => sum + s, 0) / data.scores.length);
+        // determine most common risk level for the company
+        const riskCounts = data.risks.reduce((rAcc, r) => {
+          rAcc[r] = (rAcc[r] || 0) + 1;
+          return rAcc;
+        }, {});
+        const mostCommonRisk = Object.entries(riskCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+        const riskLevel = mostCommonRisk || getRiskLevelFromScore(avgScore) || "UNKNOWN";
+        return {
+          company,
+          avgScore,
+          riskLevel,
+        };
+      })
       .sort((a, b) => b.avgScore - a.avgScore)
       .slice(0, 8);
 
@@ -216,6 +245,13 @@ function History() {
     MEDIUM: "#f59e0b",
     LOW: "#10b981",
     UNKNOWN: "#6b7280",
+  };
+
+  const getRiskLevelFromScore = (score) => {
+    const s = Number(score || 0);
+    if (s <= 35) return "HIGH";
+    if (s <= 65) return "MEDIUM";
+    return "LOW";
   };
 
   return (
@@ -315,8 +351,8 @@ function History() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Progress 
-                  value={stats.total ? (stats.highRisk / stats.total) * 100 : 0} 
+                <Progress
+                  value={stats.total ? (stats.highRisk / stats.total) * 100 : 0}
                   className="h-2 bg-neutral-200 dark:bg-neutral-800"
                 />
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
@@ -333,7 +369,7 @@ function History() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Progress 
+                <Progress
                   value={stats.total ? (stats.lowRisk / stats.total) * 100 : 0}
                   className="h-2 bg-neutral-200 dark:bg-neutral-800 [&>div]:bg-emerald-500"
                 />
@@ -394,16 +430,24 @@ function History() {
                             <Cell key={`cell-${index}`} fill={COLORS[entry.name] || COLORS.UNKNOWN} />
                           ))}
                         </Pie>
-                        <Tooltip />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
+                            color: 'hsl(var(--foreground))',
+                            borderRadius: 8,
+                          }}
+                          labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </CardContent>
                 </Card>
 
                 {/* SCORE DISTRIBUTION BAR CHART */}
-                <Card className="bg-card border-border">
+                <Card className="bg-card border-border text-foreground">
                   <CardHeader>
-                    <CardTitle className="text-base text-foreground flex items-center gap-2">
+                    <CardTitle className="text-base flex items-center gap-2">
                       <BarChart3 className="h-5 w-5" />
                       Score Distribution
                     </CardTitle>
@@ -411,54 +455,92 @@ function History() {
                       ESG score ranges across all analyses
                     </CardDescription>
                   </CardHeader>
+
                   <CardContent>
                     <ResponsiveContainer width="100%" height={300}>
                       <BarChart data={chartData.scoreDistribution}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                        <XAxis dataKey="range" stroke="var(--color-muted-foreground)" />
-                        <YAxis stroke="var(--color-muted-foreground)" />
-                        <Tooltip 
+                        <CartesianGrid strokeDasharray="3 3" />
+
+                        <XAxis dataKey="range" />
+                        <YAxis />
+
+                        <Tooltip
                           contentStyle={{
-                            backgroundColor: 'var(--color-card)',
-                            border: `1px solid var(--color-border)`,
-                            borderRadius: '6px',
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px",
+                            color: "hsl(var(--foreground))",
                           }}
                         />
-                        <Bar dataKey="count" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
+
+                        <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                          {chartData.scoreDistribution.map((entry, i) => {
+                            const rangeToRisk = {
+                              "0-35": "HIGH",
+                              "36-65": "MEDIUM",
+                              "66-100": "LOW",
+                            };
+                            const risk = rangeToRisk[entry.range] || "UNKNOWN";
+                            return (
+                              <Cell
+                                key={`cell-score-${i}`}
+                                fill={COLORS[risk] || COLORS.UNKNOWN}
+                              />
+                            );
+                          })}
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </CardContent>
                 </Card>
+
               </div>
 
               {/* COMPANY AVERAGES */}
-              <Card className="bg-card border-border">
+              <Card className="bg-card border-border text-foreground">
                 <CardHeader>
-                  <CardTitle className="text-base text-foreground">
+                  <CardTitle className="text-base">
                     Company Performance
                   </CardTitle>
                   <CardDescription className="text-sm">
                     Average ESG scores by company
                   </CardDescription>
                 </CardHeader>
+
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={chartData.companyAverages} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                      <XAxis type="number" domain={[0, 100]} stroke="var(--color-muted-foreground)" />
-                      <YAxis dataKey="company" type="category" width={120} stroke="var(--color-muted-foreground)" />
-                      <Tooltip 
+                      <CartesianGrid strokeDasharray="3 3" />
+
+                      <XAxis type="number" domain={[0, 100]} />
+                      <YAxis
+                        dataKey="company"
+                        type="category"
+                        width={120}
+                      />
+
+                      <Tooltip
                         contentStyle={{
-                          backgroundColor: 'var(--color-card)',
-                          border: `1px solid var(--color-border)`,
-                          borderRadius: '6px',
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                          color: "hsl(var(--foreground))",
                         }}
                       />
-                      <Bar dataKey="avgScore" fill="var(--color-success)" radius={[0, 4, 4, 0]} />
+
+                      <Bar dataKey="avgScore" radius={[0, 4, 4, 0]}>
+                        {chartData.companyAverages.map((entry, i) => (
+                          <Cell
+                            key={`cell-company-${i}`}
+                            fill={COLORS[entry.riskLevel] || COLORS.UNKNOWN}
+                          />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
+
             </TabsContent>
 
             {/* TRENDS TAB */}
@@ -478,7 +560,7 @@ function History() {
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                       <XAxis dataKey="date" stroke="var(--color-muted-foreground)" />
                       <YAxis domain={[0, 100]} stroke="var(--color-muted-foreground)" />
-                      <Tooltip 
+                      <Tooltip
                         contentStyle={{
                           backgroundColor: 'var(--color-card)',
                           border: `1px solid var(--color-border)`,
@@ -486,10 +568,10 @@ function History() {
                         }}
                       />
                       <Legend />
-                      <Line 
-                        type="monotone" 
-                        dataKey="score" 
-                        stroke="var(--color-primary)" 
+                      <Line
+                        type="monotone"
+                        dataKey="score"
+                        stroke="var(--color-primary)"
                         strokeWidth={2}
                         dot={{ fill: 'var(--color-primary)', r: 4 }}
                         activeDot={{ r: 6 }}
@@ -513,7 +595,7 @@ function History() {
                         Latest ESG risk evaluations performed by the system
                       </CardDescription>
                     </div>
-                    
+
                     {/* FILTERS */}
                     <div className="flex gap-2">
                       <Select value={selectedCompany} onValueChange={setSelectedCompany}>
@@ -564,49 +646,57 @@ function History() {
                         </TableHeader>
 
                         <TableBody>
-                          {filteredAnalyses.map((a) => (
-                            <TableRow
-                              key={a.analysisId}
-                              className="hover:bg-neutral-100 dark:hover:bg-white/5 transition"
-                            >
-                              <TableCell className="font-medium">
-                                {a.companyName}
-                              </TableCell>
+                          {filteredAnalyses.map((a) => {
+                            const displayRisk = a.riskLevel || getRiskLevelFromScore(a.esgScore);
+                            return (
+                              <TableRow
+                                key={a.analysisId}
+                                className="hover:bg-neutral-100 dark:hover:bg-white/5 transition"
+                              >
+                                <TableCell className="font-medium">
+                                  {a.companyName}
+                                </TableCell>
 
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-semibold">{a.esgScore}</span>
-                                  <Progress 
-                                    value={a.esgScore} 
-                                    className="h-2 w-20 bg-neutral-200 dark:bg-neutral-800"
-                                  />
-                                </div>
-                              </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold">{a.esgScore}</span>
+                                    <Progress
+                                      value={a.esgScore}
+                                      className={`h-2 w-20 bg-neutral-200 dark:bg-neutral-800 ${displayRisk === 'HIGH'
+                                          ? '[&>div]:bg-red-500 dark:[&>div]:bg-red-400'
+                                          : displayRisk === 'MEDIUM'
+                                            ? '[&>div]:bg-amber-500 dark:[&>div]:bg-amber-400'
+                                            : '[&>div]:bg-emerald-500 dark:[&>div]:bg-emerald-400'
+                                        }`}
+                                    />
+                                  </div>
+                                </TableCell>
 
-                              <TableCell>
-                                <Badge
-                                  variant={
-                                    a.riskLevel === "HIGH"
-                                      ? "destructive"
-                                      : a.riskLevel === "MEDIUM"
-                                      ? "secondary"
-                                      : "default"
-                                  }
-                                  className={
-                                    a.riskLevel === "LOW"
-                                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                                      : ""
-                                  }
-                                >
-                                  {a.riskLevel}
-                                </Badge>
-                              </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant={
+                                      displayRisk === "HIGH"
+                                        ? "destructive"
+                                        : displayRisk === "MEDIUM"
+                                          ? "secondary"
+                                          : "default"
+                                    }
+                                    className={
+                                      displayRisk === "LOW"
+                                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                        : ""
+                                    }
+                                  >
+                                    {displayRisk}
+                                  </Badge>
+                                </TableCell>
 
-                              <TableCell className="text-sm text-neutral-500 dark:text-neutral-400">
-                                {getDate(a)}
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                                <TableCell className="text-sm text-neutral-500 dark:text-neutral-400">
+                                  {getDate(a)}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </div>

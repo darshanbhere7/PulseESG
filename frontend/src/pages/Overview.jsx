@@ -9,7 +9,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-// removed Badge import: use compact pill spans for risk level styling
 import {
   Table,
   TableBody,
@@ -18,6 +17,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // charts
 import {
@@ -31,10 +47,25 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
+  LineChart,
+  Line,
+  Legend,
 } from "recharts";
 
 // icons
-import { TrendingUp, AlertTriangle, Building2, BarChart3 } from "lucide-react";
+import {
+  TrendingUp,
+  AlertTriangle,
+  Building2,
+  BarChart3,
+  Leaf,
+  Users,
+  Shield,
+  RefreshCw,
+  ArrowUpRight,
+  ArrowDownRight,
+  Activity
+} from "lucide-react";
 
 const RISK_COLORS = {
   HIGH: "#ef4444",
@@ -46,8 +77,8 @@ export default function Overview() {
   const [companies, setCompanies] = useState([]);
   const [analyses, setAnalyses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [companyFilter, setCompanyFilter] = useState("ALL");
-  const [riskFilter, setRiskFilter] = useState("ALL");
+  const [companyFilter, setCompanyFilter] = useState("all");
+  const [riskFilter, setRiskFilter] = useState("all");
 
   useEffect(() => {
     loadData();
@@ -83,15 +114,29 @@ export default function Overview() {
   const avgScore =
     analyses.length > 0
       ? Math.round(
-          analyses.reduce((sum, a) => sum + (a.esgScore || 0), 0) /
-            analyses.length
-        )
+        analyses.reduce((sum, a) => sum + (a.esgScore || 0), 0) /
+        analyses.length
+      )
       : 0;
 
   const riskCounts = {
     HIGH: analyses.filter((a) => a.riskLevel === "HIGH").length,
     MEDIUM: analyses.filter((a) => a.riskLevel === "MEDIUM").length,
     LOW: analyses.filter((a) => a.riskLevel === "LOW").length,
+  };
+
+  // Calculate trend (mock data - you can replace with actual trend logic)
+  const scoreTrend = Math.random() > 0.5 ? "up" : "down";
+  const trendValue = Math.floor(Math.random() * 10) + 1;
+
+  // ESG Pillar breakdown (mock data based on scores)
+
+
+  const getRiskLevelFromScore = (score) => {
+    const s = Number(score || 0);
+    if (s <= 35) return "HIGH";
+    if (s <= 65) return "MEDIUM";
+    return "LOW";
   };
 
   const pieData = Object.keys(riskCounts).map((key) => ({
@@ -102,7 +147,42 @@ export default function Overview() {
   const barData = analyses.slice(0, 6).map((a) => ({
     name: a.companyName,
     score: a.esgScore,
+    riskLevel: a.riskLevel || "LOW",
   }));
+
+  // Build trend data from real analyses (last 6 analyses by timestamp)
+  const trendData = (() => {
+    if (!analyses || analyses.length === 0) {
+      return [
+        { month: "Jan", score: avgScore - 8 },
+        { month: "Feb", score: avgScore - 6 },
+        { month: "Mar", score: avgScore - 4 },
+        { month: "Apr", score: avgScore - 2 },
+        { month: "May", score: avgScore - 1 },
+        { month: "Jun", score: avgScore },
+      ];
+    }
+
+    const getTs = (rec) => rec?.timestamp || rec?.date || rec?.createdAt || rec?.created_at || rec?.analysisDate || null;
+
+    const sorted = [...analyses]
+      .filter((a) => (a?.esgScore !== undefined && getTs(a)))
+      .sort((a, b) => new Date(getTs(a)) - new Date(getTs(b)));
+
+    const lastN = 6;
+    const slice = sorted.slice(-lastN);
+
+    return slice.map((a) => {
+      const ts = getTs(a);
+      let label = "";
+      try {
+        label = new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      } catch {
+        label = String(ts);
+      }
+      return { month: label, score: Number(a.esgScore || 0) };
+    });
+  })();
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
@@ -152,11 +232,17 @@ export default function Overview() {
   return (
     <div className="pt-24 px-6 pb-10 space-y-8 max-w-7xl mx-auto">
       {/* HEADER */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">ESG Overview</h1>
-        <p className="text-muted-foreground">
-          AI-driven ESG risk intelligence for portfolio monitoring
-        </p>
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight">ESG Overview</h1>
+          <p className="text-muted-foreground">
+            AI-driven ESG risk intelligence for portfolio monitoring
+          </p>
+        </div>
+        <Button onClick={loadData} variant="outline" size="sm" className="gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Refresh
+        </Button>
       </div>
 
       {/* KPI CARDS */}
@@ -173,6 +259,8 @@ export default function Overview() {
           icon={<BarChart3 className="h-5 w-5" />}
           description="Portfolio average"
           valueColor="text-primary"
+          trend={scoreTrend}
+          trendValue={trendValue}
         />
         <KpiCard
           title="High Risk"
@@ -190,6 +278,166 @@ export default function Overview() {
         />
       </div>
 
+
+
+      {/* CHARTS SECTION */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* RISK DISTRIBUTION */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Risk Distribution</CardTitle>
+            <CardDescription>Portfolio risk level breakdown</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={RISK_COLORS[entry.name]} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="flex items-center justify-center gap-4 mt-4">
+              {Object.keys(RISK_COLORS).map((risk) => (
+                <div key={risk} className="flex items-center gap-2">
+                  <div
+                    className="h-3 w-3 rounded-full"
+                    style={{ backgroundColor: RISK_COLORS[risk] }}
+                  />
+                  <span className="text-xs text-muted-foreground">{risk}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* SCORE TREND */}
+        <Card className="text-foreground">
+          <CardHeader>
+            <CardTitle>Score Trend</CardTitle>
+            <CardDescription>
+              Average ESG score over time
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={trendData}>
+                <CartesianGrid strokeDasharray="3 3" />
+
+                <XAxis dataKey="month" />
+                <YAxis />
+
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    color: "hsl(var(--foreground))",
+                  }}
+                />
+
+                <Line
+                  type="monotone"
+                  dataKey="score"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+
+
+
+      </div>
+
+      {/* COMPANY PERFORMANCE */}
+      <Card className="text-foreground">
+        <CardHeader>
+          <CardTitle>Company Performance</CardTitle>
+          <CardDescription>
+            Top and bottom ESG performers in your portfolio
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <Tabs defaultValue="top">
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="top">Top Performers</TabsTrigger>
+              <TabsTrigger value="bottom">Needs Attention</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="top" className="mt-6">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart
+                  data={[...barData].sort((a, b) => b.score - a.score).slice(0, 5)}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      color: "hsl(var(--foreground))",
+                    }}
+                  />
+                  <Bar dataKey="score" radius={[8, 8, 0, 0]}>
+                    {barData
+                      .sort((a, b) => b.score - a.score)
+                      .slice(0, 5)
+                      .map((entry, i) => (
+                        <Cell key={i} fill={RISK_COLORS[entry.riskLevel]} />
+                      ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </TabsContent>
+
+            <TabsContent value="bottom" className="mt-6">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart
+                  data={[...barData].sort((a, b) => a.score - b.score).slice(0, 5)}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      color: "hsl(var(--foreground))",
+                    }}
+                  />
+                  <Bar dataKey="score" radius={[8, 8, 0, 0]}>
+                    {barData
+                      .sort((a, b) => a.score - b.score)
+                      .slice(0, 5)
+                      .map((entry, i) => (
+                        <Cell key={i} fill={RISK_COLORS[entry.riskLevel]} />
+                      ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+
       {/* TABLE */}
       <Card>
         <CardHeader className="flex items-start gap-4">
@@ -199,97 +447,123 @@ export default function Overview() {
           </div>
 
           <div className="ml-auto flex items-center gap-3">
-            <select
-              value={companyFilter}
-              onChange={(e) => setCompanyFilter(e.target.value)}
-              className="px-3 py-2 rounded-md bg-card border border-border text-foreground text-sm"
-            >
-              <option value="ALL">All Companies</option>
-              {companies.map((c) => (
-                <option key={c.id} value={c.name}>{c.name}</option>
-              ))}
-            </select>
+            <Select value={companyFilter} onValueChange={setCompanyFilter}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="All Companies" />
+              </SelectTrigger>
+              <SelectContent className="bg-card border-border">
+                <SelectItem value="all">All Companies</SelectItem>
+                {companies.map((c) => (
+                  <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-            <select
-              value={riskFilter}
-              onChange={(e) => setRiskFilter(e.target.value)}
-              className="px-3 py-2 rounded-md bg-card border border-border text-foreground text-sm"
-            >
-              <option value="ALL">All Risks</option>
-              <option value="LOW">LOW</option>
-              <option value="MEDIUM">MEDIUM</option>
-              <option value="HIGH">HIGH</option>
-            </select>
+            <Select value={riskFilter} onValueChange={setRiskFilter}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="All Risks" />
+              </SelectTrigger>
+              <SelectContent className="bg-card border-border">
+                <SelectItem value="all">All Risks</SelectItem>
+                <SelectItem value="LOW">LOW</SelectItem>
+                <SelectItem value="MEDIUM">MEDIUM</SelectItem>
+                <SelectItem value="HIGH">HIGH</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent>
           {analyses.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">
-              No ESG analyses available
-            </p>
+            <div className="text-center py-12">
+              <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-sm text-muted-foreground">
+                No ESG analyses available
+              </p>
+            </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Company</TableHead>
-                  <TableHead>ESG Score</TableHead>
-                  <TableHead>Risk Level</TableHead>
-                  <TableHead className="text-right">Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {analyses
-                  .filter((a) => (companyFilter === "ALL" ? true : a.companyName === companyFilter))
-                  .filter((a) => (riskFilter === "ALL" ? true : a.riskLevel === riskFilter))
-                  .slice(0, 5)
-                  .map((a) => {
-                    const getDateStr = (rec) => {
-                      const val = rec?.timestamp || rec?.date || rec?.createdAt || rec?.created_at || rec?.analysisDate;
-                      if (!val) return "-";
-                      try {
-                        return new Date(val).toLocaleDateString();
-                      } catch {
-                        return "-";
-                      }
-                    };
+            <ScrollArea className="max-h-[420px]">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Company</TableHead>
+                      <TableHead>ESG Score</TableHead>
+                      <TableHead>Risk Level</TableHead>
+                      <TableHead className="flex items-center justify-end">Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
 
-                    const dateStr = getDateStr(a);
-                    const score = Number(a.esgScore || 0);
+                  <TableBody>
+                    {analyses
+                      .filter((a) => (companyFilter === "all" ? true : a.companyName === companyFilter))
+                      .filter((a) => (riskFilter === "all" ? true : a.riskLevel === riskFilter))
+                      .slice(0, 5)
+                      .map((a) => {
+                        const getDateStr = (rec) => {
+                          const val = rec?.timestamp || rec?.date || rec?.createdAt || rec?.created_at || rec?.analysisDate;
+                          if (!val) return "-";
+                          try {
+                            return new Date(val).toLocaleDateString();
+                          } catch {
+                            return "-";
+                          }
+                        };
 
-                    return (
-                      <TableRow key={a.analysisId}>
-                        <TableCell className="font-medium">{a.companyName}</TableCell>
+                        const dateStr = getDateStr(a);
+                        const score = Number(a.esgScore || 0);
+                        const displayRisk = a.riskLevel || getRiskLevelFromScore(score);
 
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 text-sm font-medium">{score}</div>
-                            <div className="w-44 bg-muted rounded-full h-2 overflow-hidden">
-                              <div
-                                className="h-2 rounded-full"
-                                style={{ width: `${Math.max(0, Math.min(100, score))}%`, background: 'var(--color-primary)' }}
-                              />
-                            </div>
-                          </div>
-                        </TableCell>
-
-                        <TableCell>
-                          <span
-                            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold"
-                            style={{
-                              background: RISK_COLORS[a.riskLevel] || '#6b7280',
-                              color: '#fff',
-                            }}
+                        return (
+                          <TableRow
+                            key={a.analysisId}
+                            className="hover:bg-neutral-100 dark:hover:bg-white/5 transition"
                           >
-                            {a.riskLevel}
-                          </span>
-                        </TableCell>
+                            <TableCell className="font-medium">{a.companyName}</TableCell>
 
-                        <TableCell className="text-right">{dateStr}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-              </TableBody>
-            </Table>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold">{score}</span>
+                                <Progress
+                                  value={score}
+                                  className={`h-2 w-20 bg-neutral-200 dark:bg-neutral-800 ${displayRisk === 'HIGH'
+                                      ? '[&>div]:bg-red-500 dark:[&>div]:bg-red-400'
+                                      : displayRisk === 'MEDIUM'
+                                        ? '[&>div]:bg-amber-500 dark:[&>div]:bg-amber-400'
+                                        : '[&>div]:bg-emerald-500 dark:[&>div]:bg-emerald-400'
+                                    }`}
+                                />
+                              </div>
+                            </TableCell>
+
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  displayRisk === "HIGH"
+                                    ? "destructive"
+                                    : displayRisk === "MEDIUM"
+                                      ? "secondary"
+                                      : "default"
+                                }
+                                className={
+                                  displayRisk === "LOW"
+                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                    : ""
+                                }
+                              >
+                                {displayRisk}
+                              </Badge>
+                            </TableCell>
+
+                            <TableCell className="text-sm text-neutral-500 dark:text-neutral-400 text-right">
+                              {dateStr}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                  </TableBody>
+                </Table>
+              </div>
+            </ScrollArea>
           )}
         </CardContent>
       </Card>
@@ -297,20 +571,34 @@ export default function Overview() {
   );
 }
 
-function KpiCard({ title, value, icon, description, valueColor = "text-foreground" }) {
+function KpiCard({ title, value, icon, description, valueColor = "text-foreground", trend, trendValue }) {
   return (
-    <Card>
+    <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm text-muted-foreground">
           {title}
         </CardTitle>
-        {icon}
+        <div className="p-2 rounded-lg bg-primary/10">
+          {icon}
+        </div>
       </CardHeader>
       <CardContent>
-        <div className={`text-2xl font-bold ${valueColor}`}>
-          {value}
+        <div className="flex items-baseline gap-2">
+          <div className={`text-2xl font-bold ${valueColor}`}>
+            {value}
+          </div>
+          {trend && (
+            <div className={`flex items-center gap-1 text-xs font-medium ${trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+              {trend === 'up' ? (
+                <ArrowUpRight className="h-3 w-3" />
+              ) : (
+                <ArrowDownRight className="h-3 w-3" />
+              )}
+              {trendValue}%
+            </div>
+          )}
         </div>
-        <p className="text-xs text-muted-foreground">{description}</p>
+        <p className="text-xs text-muted-foreground mt-1">{description}</p>
       </CardContent>
     </Card>
   );
