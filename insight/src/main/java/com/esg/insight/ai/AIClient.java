@@ -19,8 +19,8 @@ public class AIClient {
     private static final Logger log = LoggerFactory.getLogger(AIClient.class);
     private static final int MAX_RETRIES = 3;
     private static final long INITIAL_RETRY_DELAY_MS = 1000; // 1 second
-    private static final int CONNECT_TIMEOUT_MS = 10000; // 10 seconds
-    private static final int READ_TIMEOUT_MS = 120000; // 120 seconds (2 minutes) to allow AI processing
+    private static final int CONNECT_TIMEOUT_MS = 30000; // 30 seconds
+    private static final int READ_TIMEOUT_MS = 600000; // 600 seconds (10 minutes) to allow AI processing on Render
 
     private final String aiUrl;
     private final RestTemplate restTemplate;

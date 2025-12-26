@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import api from "../api/axios";
 
 // shadcn/ui
@@ -21,6 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
 
 import {
   Loader2,
@@ -28,6 +29,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   Shield,
+  Activity,
+  Zap,
 } from "lucide-react";
 
 function Analyze() {
@@ -37,9 +40,23 @@ function Analyze() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [loadingMessage, setLoadingMessage] = useState("");
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const loadingIntervalRef = useRef(null);
+  const timeIntervalRef = useRef(null);
 
   useEffect(() => {
     fetchCompanies();
+    
+    // Cleanup intervals on unmount
+    return () => {
+      if (loadingIntervalRef.current) {
+        clearInterval(loadingIntervalRef.current);
+      }
+      if (timeIntervalRef.current) {
+        clearInterval(timeIntervalRef.current);
+      }
+    };
   }, []);
 
   const fetchCompanies = async () => {
@@ -61,14 +78,64 @@ function Analyze() {
       setError("");
       setLoading(true);
       setResult(null);
+      setElapsedTime(0);
+      setLoadingMessage("Initializing AI analysis...");
+
+      // Start loading message rotation
+      const messages = [
+        "Initializing AI analysis...",
+        "Processing ESG content...",
+        "Analyzing environmental factors...",
+        "Evaluating social impact...",
+        "Assessing governance practices...",
+        "Calculating risk scores...",
+        "Generating insights...",
+        "Finalizing analysis...",
+        "AI is processing your request...",
+        "This may take a few minutes, please wait...",
+        "Analyzing complex ESG patterns...",
+        "Almost there, processing final details...",
+      ];
+
+      let messageIndex = 0;
+      loadingIntervalRef.current = setInterval(() => {
+        messageIndex = (messageIndex + 1) % messages.length;
+        setLoadingMessage(messages[messageIndex]);
+      }, 8000); // Change message every 8 seconds
+
+      // Start elapsed time counter
+      timeIntervalRef.current = setInterval(() => {
+        setElapsedTime((prev) => prev + 1);
+      }, 1000);
 
       const res = await api.post("/esg/analyze", {
         companyId: Number(companyId),
         newsText,
       });
 
+      // Clear intervals on success
+      if (loadingIntervalRef.current) {
+        clearInterval(loadingIntervalRef.current);
+        loadingIntervalRef.current = null;
+      }
+      if (timeIntervalRef.current) {
+        clearInterval(timeIntervalRef.current);
+        timeIntervalRef.current = null;
+      }
+
       setResult(res.data);
+      setLoadingMessage("");
     } catch (err) {
+      // Clear intervals on error
+      if (loadingIntervalRef.current) {
+        clearInterval(loadingIntervalRef.current);
+        loadingIntervalRef.current = null;
+      }
+      if (timeIntervalRef.current) {
+        clearInterval(timeIntervalRef.current);
+        timeIntervalRef.current = null;
+      }
+
       // Use user-friendly message from axios interceptor, or fallback to extracting from response
       let errorMessage = err?.userFriendlyMessage;
       
@@ -110,10 +177,20 @@ function Analyze() {
       }
       
       setError(errorMessage);
+      setLoadingMessage("");
       console.error("Analysis error:", err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (mins > 0) {
+      return `${mins}m ${secs}s`;
+    }
+    return `${secs}s`;
   };
 
   const getRiskConfig = (level) => {
@@ -228,6 +305,51 @@ function Analyze() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* LOADING CARD */}
+      {loading && (
+        <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5 animate-pulse text-blue-600" />
+              AI Analysis in Progress
+            </CardTitle>
+            <CardDescription>
+              Our AI is analyzing your ESG content. This may take a few minutes, especially if the service is starting up.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                <Zap className="h-4 w-4 absolute -top-1 -right-1 animate-pulse text-yellow-500" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-sm">{loadingMessage}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Elapsed time: {formatTime(elapsedTime)}
+                </p>
+              </div>
+            </div>
+            
+            <Progress 
+              value={Math.min((elapsedTime / 300) * 100, 95)} 
+              className="h-2"
+            />
+            
+            <div className="flex items-start gap-2 text-xs text-muted-foreground bg-blue-100 dark:bg-blue-900/30 p-3 rounded-md">
+              <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium mb-1">Why is this taking time?</p>
+                <p>
+                  The AI service may be starting up (cold start) or processing complex analysis. 
+                  Please wait - the analysis will complete automatically. You can keep this page open.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* RESULT */}
       {result && (
