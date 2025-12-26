@@ -217,12 +217,25 @@ function History() {
     };
   }, [analyses]);
 
-  // Filtered analyses
+  // Helper function to get timestamp from analysis record
+  const getTs = (rec) => rec?.timestamp || rec?.date || rec?.createdAt || rec?.created_at || rec?.analysisDate || null;
+
+  // Filtered analyses - sorted by timestamp (most recent first)
   const filteredAnalyses = useMemo(() => {
-    return analyses.filter((a) => {
+    const filtered = analyses.filter((a) => {
       const matchCompany = selectedCompany === "all" || a.companyName === selectedCompany;
       const matchRisk = selectedRisk === "all" || a.riskLevel === selectedRisk;
       return matchCompany && matchRisk;
+    });
+
+    // Sort by timestamp descending (most recent first)
+    return filtered.sort((a, b) => {
+      const tsA = getTs(a);
+      const tsB = getTs(b);
+      if (!tsA && !tsB) return 0;
+      if (!tsA) return 1;
+      if (!tsB) return -1;
+      return new Date(tsB).getTime() - new Date(tsA).getTime();
     });
   }, [analyses, selectedCompany, selectedRisk]);
 
