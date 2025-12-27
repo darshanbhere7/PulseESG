@@ -59,9 +59,6 @@ public class SecurityConfig {
                         // Auth APIs
                         .requestMatchers("/api/auth/**").permitAll()
 
-                        // ESG AI Services - No authentication required
-                        .requestMatchers("/api/esg/**").permitAll()
-
                         // Everything else requires JWT
                         .anyRequest().authenticated()
                 )
