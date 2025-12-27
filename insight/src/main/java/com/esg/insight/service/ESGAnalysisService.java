@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -108,11 +109,10 @@ public class ESGAnalysisService {
                         .companyName(a.getCompany().getName())
                         .esgScore(a.getEsgScore())
                         .riskLevel(a.getRiskLevel())
-                        .explanation(a.getAnalystSummary())
-                        .signals(a.getAnalysisPayload())
+                        .analysisPayload(a.getAnalysisPayload())
                         .timestamp(a.getCreatedAt())
                         .build()
                 )
-                .toList();
+                .collect(Collectors.toList());
     }
 }
