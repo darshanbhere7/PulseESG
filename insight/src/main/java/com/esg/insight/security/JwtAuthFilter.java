@@ -62,6 +62,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         );
 
                         SecurityContextHolder.getContext().setAuthentication(authentication);
+                        log.debug("Authentication successful for user: {} with role: {}", email, role);
                     } else {
                         // Log warning if email or role is missing
                         log.warn("Token validation passed but email or role is missing. Email: {}, Role: {}", email, role);
@@ -74,8 +75,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 // Log error but continue - Spring Security will handle unauthorized requests
                 // This prevents exceptions from breaking the filter chain
                 // If token is invalid, authentication won't be set and Spring Security will return 401
-                log.error("Error processing JWT token: {}", e.getMessage());
+                log.error("Error processing JWT token for request {}: {}", request.getRequestURI(), e.getMessage(), e);
             }
+        } else {
+            log.debug("No Authorization header found for request: {}", request.getRequestURI());
         }
 
         filterChain.doFilter(request, response);
