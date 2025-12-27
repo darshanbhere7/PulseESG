@@ -134,7 +134,7 @@ function History() {
 
     // Risk distribution
     const riskDist = analyses.reduce((acc, a) => {
-      const risk = a.overallAssessment?.riskLevel ?? a.riskLevel || "UNKNOWN";
+      const risk = (a.overallAssessment?.riskLevel ?? a.riskLevel) || "UNKNOWN";
       acc[risk] = (acc[risk] || 0) + 1;
       return acc;
     }, {});
@@ -167,7 +167,7 @@ function History() {
       const name = a.companyName;
       if (!acc[name]) acc[name] = { scores: [], risks: [] };
       acc[name].scores.push(a.overallAssessment?.esgScore ?? a.esgScore ?? 0);
-      acc[name].risks.push(a.overallAssessment?.riskLevel ?? a.riskLevel || "UNKNOWN");
+      acc[name].risks.push((a.overallAssessment?.riskLevel ?? a.riskLevel) || "UNKNOWN");
       return acc;
     }, {});
 
@@ -659,7 +659,7 @@ function History() {
                           {filteredAnalyses.map((a) => {
                             // Prefer riskLevel from overallAssessment, then root level, then fallback
                             const score = a.overallAssessment?.esgScore ?? a.esgScore;
-                            const displayRisk = a.overallAssessment?.riskLevel ?? a.riskLevel || (score !== undefined && score !== null ? getRiskLevelFromScore(score) : "UNKNOWN");
+                            const displayRisk = (a.overallAssessment?.riskLevel ?? a.riskLevel) || (score !== undefined && score !== null ? getRiskLevelFromScore(score) : "UNKNOWN");
                             return (
                               <TableRow
                                 key={a.analysisId}
