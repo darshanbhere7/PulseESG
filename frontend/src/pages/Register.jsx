@@ -1,10 +1,16 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../api/axios";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, AlertCircle } from "lucide-react";
 
 export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [alertError, setAlertError] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -15,15 +21,56 @@ export default function Register() {
     } catch {}
   }, []);
 
+  // Email validation regex
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  
+  // Password validation - at least 6 characters
+  const passwordRegex = /^.{6,}$/;
+
+  const validateForm = () => {
+    let isValid = true;
+    setEmailError("");
+    setPasswordError("");
+
+    if (!email.trim()) {
+      setEmailError("Email is required");
+      isValid = false;
+    } else if (!emailRegex.test(email)) {
+      setEmailError("Please enter a valid email address");
+      isValid = false;
+    }
+
+    if (!password) {
+      setPasswordError("Password is required");
+      isValid = false;
+    } else if (!passwordRegex.test(password)) {
+      setPasswordError("Password must be at least 6 characters");
+      isValid = false;
+    }
+
+    return isValid;
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
+    setAlertError("");
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
     try {
       const res = await api.post("/auth/register", { email, password });
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("role", res.data.role);
       navigate("/overview", { replace: true });
-    } catch {
-      alert("Registration failed");
+    } catch (error) {
+      setAlertError(
+        error.response?.data?.message || "Registration failed. Please try again."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -56,6 +103,13 @@ export default function Register() {
           </p>
 
           <form onSubmit={handleRegister} className="mt-8 space-y-5">
+            {/* Alert for errors */}
+            {alertError && (
+              <Alert variant="destructive" className="mb-2">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{alertError}</AlertDescription>
+              </Alert>
+            )}
 
             {/* Email */}
             <div>
@@ -66,17 +120,38 @@ export default function Register() {
                 type="email"
                 placeholder="you@company.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (emailError) {
+                    setEmailError("");
+                  }
+                }}
+                onBlur={() => {
+                  if (email && !emailRegex.test(email)) {
+                    setEmailError("Please enter a valid email address");
+                  } else {
+                    setEmailError("");
+                  }
+                }}
                 required
-                className="
+                className={`
                   w-full rounded-md px-4 py-2 outline-none transition
                   bg-white dark:bg-neutral-900
                   text-neutral-900 dark:text-white
                   placeholder-neutral-400
-                  border border-neutral-300 dark:border-white/10
+                  border ${
+                    emailError
+                      ? "border-red-500 dark:border-red-500"
+                      : "border-neutral-300 dark:border-white/10"
+                  }
                   focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20
-                "
+                `}
               />
+              {emailError && (
+                <p className="mt-1 text-sm text-red-500 dark:text-red-400">
+                  {emailError}
+                </p>
+              )}
             </div>
 
             {/* Password */}
@@ -88,35 +163,67 @@ export default function Register() {
                 type="password"
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (passwordError) {
+                    setPasswordError("");
+                  }
+                }}
+                onBlur={() => {
+                  if (password && !passwordRegex.test(password)) {
+                    setPasswordError("Password must be at least 6 characters");
+                  } else {
+                    setPasswordError("");
+                  }
+                }}
                 required
-                className="
+                className={`
                   w-full rounded-md px-4 py-2 outline-none transition
                   bg-white dark:bg-neutral-900
                   text-neutral-900 dark:text-white
                   placeholder-neutral-400
-                  border border-neutral-300 dark:border-white/10
+                  border ${
+                    passwordError
+                      ? "border-red-500 dark:border-red-500"
+                      : "border-neutral-300 dark:border-white/10"
+                  }
                   focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20
-                "
+                `}
               />
+              {passwordError && (
+                <p className="mt-1 text-sm text-red-500 dark:text-red-400">
+                  {passwordError}
+                </p>
+              )}
             </div>
 
             {/* Button */}
             <button
               type="submit"
+              disabled={loading}
               className="
                 group relative w-full overflow-hidden rounded-md py-2 font-medium
                 bg-neutral-900 text-white hover:bg-neutral-800
                 dark:bg-white dark:text-black dark:hover:bg-neutral-200
-                transition
+                transition disabled:opacity-50 disabled:cursor-not-allowed
+                flex items-center justify-center gap-2
               "
             >
-              Sign up →
-              <span className="
-                absolute inset-x-0 bottom-0 h-px
-                bg-gradient-to-r from-transparent via-indigo-500 to-transparent
-                opacity-0 group-hover:opacity-100 transition
-              " />
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Signing up...
+                </>
+              ) : (
+                <>
+                  Sign up →
+                  <span className="
+                    absolute inset-x-0 bottom-0 h-px
+                    bg-gradient-to-r from-transparent via-indigo-500 to-transparent
+                    opacity-0 group-hover:opacity-100 transition
+                  " />
+                </>
+              )}
             </button>
           </form>
 
