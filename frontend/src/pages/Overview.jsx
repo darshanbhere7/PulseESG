@@ -175,7 +175,7 @@ export default function Overview() {
       if (!companyName || isNaN(score)) return;
       
       // Prefer riskLevel from overallAssessment, then fallback to root level, then score-based
-      const riskLevel = a.overallAssessment?.riskLevel ?? a.riskLevel || (score !== undefined && score !== null ? getRiskLevelFromScore(score) : "UNKNOWN");
+      const riskLevel = (a.overallAssessment?.riskLevel ?? a.riskLevel) || (score !== undefined && score !== null ? getRiskLevelFromScore(score) : "UNKNOWN");
       
       if (!companyMap.has(companyName)) {
         companyMap.set(companyName, {
@@ -624,7 +624,7 @@ export default function Overview() {
                         const dateStr = getDateStr(a);
                         const score = Number(a.overallAssessment?.esgScore ?? a.esgScore ?? 0);
                         // Prefer riskLevel from overallAssessment, then root level, then fallback
-                        const displayRisk = a.overallAssessment?.riskLevel ?? a.riskLevel || (score !== undefined && score !== null ? getRiskLevelFromScore(score) : "UNKNOWN");
+                        const displayRisk = (a.overallAssessment?.riskLevel ?? a.riskLevel) || (score !== undefined && score !== null ? getRiskLevelFromScore(score) : "UNKNOWN");
 
                         return (
                           <TableRow
