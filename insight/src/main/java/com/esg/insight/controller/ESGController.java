@@ -20,7 +20,7 @@ public class ESGController {
      * Trigger ISS-style ESG analysis for a company
      */
     @PostMapping("/analyze")
-    public ESGResponse analyze(@RequestBody ESGRequest request) {
+    public ESGResponse analyze(@RequestBody @jakarta.validation.Valid ESGRequest request) {
         return esgAnalysisService.analyze(request);
     }
 

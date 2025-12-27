@@ -110,7 +110,7 @@ function Analyze() {
 
       const res = await api.post("/esg/analyze", {
         companyId: Number(companyId),
-        newsText,
+        text: newsText,
       });
 
       // Clear intervals on success
