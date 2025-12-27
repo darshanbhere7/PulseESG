@@ -217,30 +217,90 @@ function Analyze() {
     return configs[level] || configs.MEDIUM;
   };
 
-  const riskConfig = result ? getRiskConfig(result.riskLevel) : null;
+  const riskConfig = result ? getRiskConfig(result.overallAssessment?.riskLevel || result.riskLevel) : null;
   const RiskIcon = riskConfig?.icon;
 
-  const renderSignals = (signals, type) => {
-    const label = type === "positive" ? "Positive Signals" : "Risk Signals";
-    const color = type === "positive" ? "success" : "destructive";
+  const renderPillarCard = (pillar, data) => {
+    if (!data) return null;
+    
+    const score = data.score || 0;
+    const risk = data.risk || "UNKNOWN";
+    const drivers = data.drivers || [];
+    const pillarConfig = getRiskConfig(risk);
+    const PillarIcon = pillarConfig?.icon;
 
-    const items =
-      signals &&
-      Object.entries(signals).flatMap(([pillar, values]) =>
-        values.map((v) => `${pillar}: ${v}`)
-      );
+    return (
+      <Card key={pillar} className={`border ${pillarConfig.border} ${pillarConfig.bg}`}>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <PillarIcon className="h-4 w-4" />
+            {pillar} Pillar
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Score</span>
+            <span className="text-lg font-semibold text-foreground">{score}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Risk</span>
+            <Badge variant={pillarConfig.variant} className="text-xs">
+              {risk}
+            </Badge>
+          </div>
+          {drivers.length > 0 && (
+            <div className="space-y-2 pt-2 border-t">
+              <p className="text-xs font-medium text-muted-foreground">Key Drivers</p>
+              <div className="flex flex-wrap gap-1.5">
+                {drivers.slice(0, 3).map((driver, i) => (
+                  <Badge key={i} variant="outline" className="text-xs">
+                    {driver}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
 
-    if (!items || items.length === 0) return null;
+  const renderKeyIncidents = (incidents) => {
+    if (!incidents || incidents.length === 0) return null;
 
     return (
       <div className="space-y-3">
-        <h4 className="font-semibold text-foreground">{label}</h4>
-        <div className="flex flex-wrap gap-2">
-          {items.map((item, i) => (
-            <Badge key={i} variant={color} className="text-xs">
-              {item}
-            </Badge>
-          ))}
+        <h4 className="font-semibold text-foreground">Key Incidents</h4>
+        <div className="space-y-2">
+          {incidents.map((incident, i) => {
+            const severity = incident.severity || "MEDIUM";
+            const severityConfig = getRiskConfig(severity);
+            return (
+              <div
+                key={i}
+                className={`p-3 rounded-lg border ${severityConfig.border} ${severityConfig.bg}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant={severityConfig.variant} className="text-xs">
+                        {incident.pillar || "N/A"}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {severity}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-foreground font-medium">{incident.incident}</p>
+                    {incident.evidence && incident.evidence.length > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Evidence: {incident.evidence.join(", ")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -372,25 +432,47 @@ function Analyze() {
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">ESG Score</p>
-                <p className="text-lg font-semibold text-foreground">{result.esgScore}</p>
+                <p className="text-lg font-semibold text-foreground">
+                  {result.overallAssessment?.esgScore ?? result.esgScore}
+                </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               <Badge variant={riskConfig.variant} className="text-sm font-semibold px-3 py-1">
-                {result.riskLevel} RISK
+                {(result.overallAssessment?.riskLevel || result.riskLevel)?.toUpperCase()} RISK
               </Badge>
             </div>
 
             <Separator className="my-2" />
 
             <div className="space-y-2">
-              <p className="text-sm font-medium text-muted-foreground">Analysis</p>
-              <p className="text-foreground leading-relaxed">{result.explanation}</p>
+              <p className="text-sm font-medium text-muted-foreground">Analyst Summary</p>
+              <p className="text-foreground leading-relaxed">
+                {result.analystSummary || result.explanation}
+              </p>
             </div>
 
-            {renderSignals(result.signals, "positive")}
-            {renderSignals(result.signals, "negative")}
+            {result.pillarAssessment && (
+              <>
+                <Separator className="my-2" />
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-muted-foreground">Pillar Assessment</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {renderPillarCard("E", result.pillarAssessment.E)}
+                    {renderPillarCard("S", result.pillarAssessment.S)}
+                    {renderPillarCard("G", result.pillarAssessment.G)}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {result.keyIncidents && result.keyIncidents.length > 0 && (
+              <>
+                <Separator className="my-2" />
+                {renderKeyIncidents(result.keyIncidents)}
+              </>
+            )}
           </CardContent>
         </Card>
       )}

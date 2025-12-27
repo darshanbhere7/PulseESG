@@ -114,15 +114,26 @@ export default function Overview() {
   const avgScore =
     analyses.length > 0
       ? Math.round(
-        analyses.reduce((sum, a) => sum + (a.esgScore || 0), 0) /
-        analyses.length
+        analyses.reduce((sum, a) => {
+          const score = a.overallAssessment?.esgScore ?? a.esgScore ?? 0;
+          return sum + score;
+        }, 0) / analyses.length
       )
       : 0;
 
   const riskCounts = {
-    HIGH: analyses.filter((a) => a.riskLevel === "HIGH").length,
-    MEDIUM: analyses.filter((a) => a.riskLevel === "MEDIUM").length,
-    LOW: analyses.filter((a) => a.riskLevel === "LOW").length,
+    HIGH: analyses.filter((a) => {
+      const risk = a.overallAssessment?.riskLevel ?? a.riskLevel;
+      return risk === "HIGH";
+    }).length,
+    MEDIUM: analyses.filter((a) => {
+      const risk = a.overallAssessment?.riskLevel ?? a.riskLevel;
+      return risk === "MEDIUM";
+    }).length,
+    LOW: analyses.filter((a) => {
+      const risk = a.overallAssessment?.riskLevel ?? a.riskLevel;
+      return risk === "LOW";
+    }).length,
   };
 
   // Calculate trend (mock data - you can replace with actual trend logic)
@@ -158,13 +169,13 @@ export default function Overview() {
     
     analyses.forEach((a) => {
       const companyName = a.companyName;
-      const score = Number(a.esgScore || 0);
+      const score = Number(a.overallAssessment?.esgScore ?? a.esgScore ?? 0);
       const timestamp = getTs(a);
       
       if (!companyName || isNaN(score)) return;
       
-      // Prefer riskLevel from backend, only use fallback if truly missing
-      const riskLevel = a.riskLevel || (score !== undefined && score !== null ? getRiskLevelFromScore(score) : "UNKNOWN");
+      // Prefer riskLevel from overallAssessment, then fallback to root level, then score-based
+      const riskLevel = a.overallAssessment?.riskLevel ?? a.riskLevel || (score !== undefined && score !== null ? getRiskLevelFromScore(score) : "UNKNOWN");
       
       if (!companyMap.has(companyName)) {
         companyMap.set(companyName, {
@@ -219,12 +230,12 @@ export default function Overview() {
     // Filter analyses with valid scores and timestamps
     const validAnalyses = analyses
       .filter((a) => {
-        const score = a?.esgScore;
+        const score = a?.overallAssessment?.esgScore ?? a?.esgScore;
         const ts = getTs(a);
         return score !== undefined && score !== null && ts;
       })
       .map((a) => ({
-        score: Number(a.esgScore || 0),
+        score: Number(a.overallAssessment?.esgScore ?? a.esgScore ?? 0),
         timestamp: new Date(getTs(a)).getTime(),
         date: new Date(getTs(a)),
       }));
@@ -585,7 +596,10 @@ export default function Overview() {
                   <TableBody>
                     {analyses
                       .filter((a) => (companyFilter === "all" ? true : a.companyName === companyFilter))
-                      .filter((a) => (riskFilter === "all" ? true : a.riskLevel === riskFilter))
+                      .filter((a) => {
+                        const risk = a.overallAssessment?.riskLevel ?? a.riskLevel;
+                        return riskFilter === "all" ? true : risk === riskFilter;
+                      })
                       .sort((a, b) => {
                         // Sort by timestamp descending (most recent first)
                         const tsA = getTs(a);
@@ -608,9 +622,9 @@ export default function Overview() {
                         };
 
                         const dateStr = getDateStr(a);
-                        const score = Number(a.esgScore || 0);
-                        // Prefer riskLevel from backend AI service, only use fallback if missing
-                        const displayRisk = a.riskLevel || (score !== undefined && score !== null ? getRiskLevelFromScore(score) : "UNKNOWN");
+                        const score = Number(a.overallAssessment?.esgScore ?? a.esgScore ?? 0);
+                        // Prefer riskLevel from overallAssessment, then root level, then fallback
+                        const displayRisk = a.overallAssessment?.riskLevel ?? a.riskLevel || (score !== undefined && score !== null ? getRiskLevelFromScore(score) : "UNKNOWN");
 
                         return (
                           <TableRow

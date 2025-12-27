@@ -134,7 +134,7 @@ function History() {
 
     // Risk distribution
     const riskDist = analyses.reduce((acc, a) => {
-      const risk = a.riskLevel || "UNKNOWN";
+      const risk = a.overallAssessment?.riskLevel ?? a.riskLevel || "UNKNOWN";
       acc[risk] = (acc[risk] || 0) + 1;
       return acc;
     }, {});
@@ -158,7 +158,7 @@ function History() {
       .slice(-10)
       .map((a) => ({
         date: getDate(a),
-        score: a.esgScore,
+        score: a.overallAssessment?.esgScore ?? a.esgScore,
         company: a.companyName,
       }));
 
@@ -166,8 +166,8 @@ function History() {
     const companyScores = analyses.reduce((acc, a) => {
       const name = a.companyName;
       if (!acc[name]) acc[name] = { scores: [], risks: [] };
-      acc[name].scores.push(a.esgScore || 0);
-      acc[name].risks.push(a.riskLevel || "UNKNOWN");
+      acc[name].scores.push(a.overallAssessment?.esgScore ?? a.esgScore ?? 0);
+      acc[name].risks.push(a.overallAssessment?.riskLevel ?? a.riskLevel || "UNKNOWN");
       return acc;
     }, {});
 
@@ -203,10 +203,16 @@ function History() {
   const stats = useMemo(() => {
     if (!analyses.length) return null;
 
-    const scores = analyses.map((a) => a.esgScore || 0);
+    const scores = analyses.map((a) => a.overallAssessment?.esgScore ?? a.esgScore ?? 0);
     const avgScore = Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length);
-    const highRisk = analyses.filter((a) => a.riskLevel === "HIGH").length;
-    const lowRisk = analyses.filter((a) => a.riskLevel === "LOW").length;
+    const highRisk = analyses.filter((a) => {
+      const risk = a.overallAssessment?.riskLevel ?? a.riskLevel;
+      return risk === "HIGH";
+    }).length;
+    const lowRisk = analyses.filter((a) => {
+      const risk = a.overallAssessment?.riskLevel ?? a.riskLevel;
+      return risk === "LOW";
+    }).length;
 
     return {
       total: analyses.length,
@@ -224,7 +230,8 @@ function History() {
   const filteredAnalyses = useMemo(() => {
     const filtered = analyses.filter((a) => {
       const matchCompany = selectedCompany === "all" || a.companyName === selectedCompany;
-      const matchRisk = selectedRisk === "all" || a.riskLevel === selectedRisk;
+      const risk = a.overallAssessment?.riskLevel ?? a.riskLevel;
+      const matchRisk = selectedRisk === "all" || risk === selectedRisk;
       return matchCompany && matchRisk;
     });
 
@@ -245,7 +252,7 @@ function History() {
   }, [analyses]);
 
   const riskLevels = useMemo(() => {
-    return [...new Set(analyses.map((a) => a.riskLevel))];
+    return [...new Set(analyses.map((a) => a.overallAssessment?.riskLevel ?? a.riskLevel))];
   }, [analyses]);
 
   const COLORS = {
@@ -650,8 +657,9 @@ function History() {
 
                         <TableBody>
                           {filteredAnalyses.map((a) => {
-                            // Prefer riskLevel from backend AI service, only use fallback if missing
-                            const displayRisk = a.riskLevel || (a.esgScore !== undefined && a.esgScore !== null ? getRiskLevelFromScore(a.esgScore) : "UNKNOWN");
+                            // Prefer riskLevel from overallAssessment, then root level, then fallback
+                            const score = a.overallAssessment?.esgScore ?? a.esgScore;
+                            const displayRisk = a.overallAssessment?.riskLevel ?? a.riskLevel || (score !== undefined && score !== null ? getRiskLevelFromScore(score) : "UNKNOWN");
                             return (
                               <TableRow
                                 key={a.analysisId}
@@ -663,9 +671,9 @@ function History() {
 
                                 <TableCell>
                                   <div className="flex items-center gap-2">
-                                    <span className="font-semibold">{a.esgScore}</span>
+                                    <span className="font-semibold">{score ?? 0}</span>
                                     <Progress
-                                      value={a.esgScore}
+                                      value={score ?? 0}
                                       className={`h-2 w-20 bg-neutral-200 dark:bg-neutral-800 ${displayRisk === 'HIGH'
                                           ? '[&>div]:bg-red-500 dark:[&>div]:bg-red-400'
                                           : displayRisk === 'MEDIUM'
