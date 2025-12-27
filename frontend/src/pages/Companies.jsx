@@ -21,6 +21,7 @@ function Companies() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [deleteId, setDeleteId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -78,16 +79,19 @@ function Companies() {
     if (!deleteId) return;
 
     try {
+      setIsDeleting(true);
+      setError("");
       await api.delete(`/companies/${deleteId}`);
       // refresh list after delete
       await loadCompanies();
       setSuccess("Company deleted successfully!");
       setTimeout(() => setSuccess(""), 3000);
+      setDeleteId(null);
     } catch (err) {
       console.error("Failed to delete company", err);
       setError(err?.response?.data?.message || "Failed to delete company. Please try again.");
     } finally {
-      setDeleteId(null);
+      setIsDeleting(false);
     }
   };
 
@@ -379,15 +383,24 @@ function Companies() {
               <div className="flex gap-3 justify-end">
                 <button
                   onClick={() => setDeleteId(null)}
-                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium rounded-lg transition-colors duration-200"
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={deleteCompany}
-                  className="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-medium rounded-lg shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-medium rounded-lg shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
                 >
-                  Delete
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    "Delete"
+                  )}
                 </button>
               </div>
             </div>
