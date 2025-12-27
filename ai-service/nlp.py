@@ -1,5 +1,5 @@
 import spacy
-from typing import List, Dict
+from typing import Dict, List
 from dotenv import load_dotenv
 import os
 
@@ -14,149 +14,128 @@ MAX_TEXT_LENGTH = int(os.getenv("MAX_TEXT_LENGTH", 4000))
 nlp = spacy.load(SPACY_MODEL)
 
 # ===============================
-# ESG EVENT TAXONOMY (CORE FIX)
+# ISS-STYLE ESG EVENT TAXONOMY
+# (severity: 1–5)
 # ===============================
 
 NEGATIVE_EVENTS = {
-    "G": [
-        "fraud", "investigation", "violation", "penalty", "bribery",
-        "lawsuit", "non-compliance", "regulatory breach", "audit failure"
-    ],
-    "E": [
-        "pollution", "spill", "emissions breach", "environmental damage",
-        "toxic", "contamination"
-    ],
-    "S": [
-        "labor violation", "unsafe working", "harassment",
-        "discrimination", "injury", "fatality"
-    ]
+    "E": {
+        "toxic": 5,
+        "contamination": 5,
+        "pollution": 4,
+        "emissions": 4,
+        "spill": 4
+    },
+    "S": {
+        "injury": 3,
+        "fatality": 4,
+        "harassment": 4,
+        "discrimination": 4,
+        "unsafe": 3,
+        "illness": 3
+    },
+    "G": {
+        "fraud": 5,
+        "bribery": 5,
+        "investigation": 4,
+        "audit": 3,
+        "regulatory": 4,
+        "whistleblower": 4
+    }
 }
 
-POSITIVE_SIGNALS = {
-    "G": [
-        "open source", "audit readiness", "governance framework",
-        "compliance system", "traceability", "validation",
-        "regulatory alignment", "issb", "csrd", "disclosure",
-        "internal controls", "risk management"
-    ],
-    "E": [
-        "sustainability reporting", "emissions tracking",
-        "climate disclosure", "carbon accounting"
-    ],
-    "S": [
-        "workforce transparency", "employee safety system",
-        "diversity reporting", "community engagement"
-    ]
-}
+BASE_PILLAR_SCORE = 70
 
 # ===============================
 # HELPERS
 # ===============================
 
 def normalize_text(text: str) -> str:
-    text = text.lower()
-    return text[:MAX_TEXT_LENGTH]
+    return text.lower()[:MAX_TEXT_LENGTH]
 
 
-def extract_phrases(doc) -> List[str]:
-    phrases = set()
+def extract_terms(doc) -> List[str]:
+    terms = set()
 
     for chunk in doc.noun_chunks:
-        phrases.add(chunk.text.lower())
+        terms.add(chunk.text.lower())
 
     for token in doc:
         if token.is_alpha and not token.is_stop:
-            phrases.add(token.text.lower())
+            terms.add(token.text.lower())
 
-    return list(phrases)
+    return list(terms)
 
 
-# ===============================
-# EVENT CLASSIFICATION
-# ===============================
-
-def detect_signals(phrases: List[str]) -> Dict:
-    detected = {
-        "negative": {"E": [], "S": [], "G": []},
-        "positive": {"E": [], "S": [], "G": []}
-    }
-
-    for pillar, keywords in NEGATIVE_EVENTS.items():
-        for kw in keywords:
-            if any(kw in p for p in phrases):
-                detected["negative"][pillar].append(kw)
-
-    for pillar, keywords in POSITIVE_SIGNALS.items():
-        for kw in keywords:
-            if any(kw in p for p in phrases):
-                detected["positive"][pillar].append(kw)
-
-    return detected
+def risk_from_score(score: int) -> str:
+    if score < 30:
+        return "HIGH"
+    elif score < 55:
+        return "MEDIUM"
+    return "LOW"
 
 
 # ===============================
-# SCORING ENGINE (ISS / MSCI STYLE)
-# ===============================
-
-def calculate_esg_score(signals: Dict) -> Dict:
-    base_score = 70  # neutral baseline
-
-    negative_hits = sum(len(v) for v in signals["negative"].values())
-    positive_hits = sum(len(v) for v in signals["positive"].values())
-
-    # Penalties (risk matters more)
-    base_score -= negative_hits * 12
-
-    # Rewards (governance maturity)
-    base_score += positive_hits * 6
-
-    score = max(0, min(100, base_score))
-
-    if negative_hits >= 3:
-        risk = "HIGH"
-    elif negative_hits >= 1:
-        risk = "MEDIUM"
-    else:
-        risk = "LOW"
-
-    return {
-        "score": score,
-        "riskLevel": risk
-    }
-
-
-# ===============================
-# MAIN ANALYSIS FUNCTION
+# CORE ISS ESG ANALYSIS
 # ===============================
 
 def analyze_text(text: str) -> Dict:
-    clean_text = normalize_text(text)
-    doc = nlp(clean_text)
+    doc = nlp(normalize_text(text))
+    terms = extract_terms(doc)
 
-    phrases = extract_phrases(doc)
-    signals = detect_signals(phrases)
-    scoring = calculate_esg_score(signals)
+    pillar_penalty = {"E": 0, "S": 0, "G": 0}
+    pillar_drivers = {"E": set(), "S": set(), "G": set()}
+    incidents = []
 
-    explanation_parts = []
+    for pillar, keywords in NEGATIVE_EVENTS.items():
+        for kw, severity in keywords.items():
+            if any(kw in t for t in terms):
+                penalty = severity * 6
+                pillar_penalty[pillar] += penalty
+                pillar_drivers[pillar].add(kw)
 
-    if sum(len(v) for v in signals["positive"].values()) > 0:
-        explanation_parts.append(
-            "Positive ESG governance and reporting infrastructure signals detected."
+                incidents.append({
+                    "pillar": pillar,
+                    "incident": f"{kw} related issue",
+                    "severity": (
+                        "CRITICAL" if severity >= 5
+                        else "HIGH" if severity >= 4
+                        else "MEDIUM"
+                    ),
+                    "evidence": [kw]
+                })
+
+    pillar_scores = {}
+    for pillar in ["E", "S", "G"]:
+        score = max(0, BASE_PILLAR_SCORE - pillar_penalty[pillar])
+        pillar_scores[pillar] = {
+            "score": score,
+            "risk": risk_from_score(score),
+            "drivers": list(pillar_drivers[pillar])
+        }
+
+    overall_score = int(
+        (pillar_scores["E"]["score"]
+         + pillar_scores["S"]["score"]
+         + pillar_scores["G"]["score"]) / 3
+    )
+
+    result = {
+        "overallAssessment": {
+            "esgScore": overall_score,
+            "riskLevel": risk_from_score(overall_score)
+        },
+        "pillarAssessment": pillar_scores,
+        "keyIncidents": incidents,
+        "governanceAssessment": {
+            "overallRisk": pillar_scores["G"]["risk"],
+            "concerns": pillar_scores["G"]["drivers"]
+        },
+        "analystSummary": (
+            "The entity exhibits elevated ESG risk primarily driven by "
+            "environmental and governance-related incidents. "
+            "These risks may have material regulatory and reputational implications."
         )
-
-    if sum(len(v) for v in signals["negative"].values()) > 0:
-        explanation_parts.append(
-            "Potential ESG risk events detected requiring analyst review."
-        )
-
-    if not explanation_parts:
-        explanation_parts.append(
-            "No material ESG risk or improvement signals detected."
-        )
-
-    return {
-        "esgScore": scoring["score"],
-        "riskLevel": scoring["riskLevel"],
-        "signals": signals,
-        "explanation": " ".join(explanation_parts)
     }
+
+    return result

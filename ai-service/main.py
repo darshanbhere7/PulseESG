@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from schemas import ESGRequest, ESGResponse
+from schemas import ESGRequest
 from nlp import analyze_text
 from dotenv import load_dotenv
 import os
@@ -11,26 +11,22 @@ import os
 load_dotenv()
 
 SPACY_MODEL = os.getenv("SPACY_MODEL", "en_core_web_sm")
-SENTIMENT_MODEL = os.getenv(
-    "SENTIMENT_MODEL",
-    "distilbert-base-uncased-finetuned-sst-2-english"
-)
 
 # ===============================
-# FASTAPI APP INITIALIZATION
+# FASTAPI APP
 # ===============================
 app = FastAPI(
-    title="ESG AI Service",
-    description="AI-driven ESG risk intelligence microservice (ISS / MSCI style)",
-    version="1.0.0"
+    title="PulseESG AI Service",
+    description="ISS-style ESG risk intelligence microservice",
+    version="2.0.0"
 )
 
 # ===============================
-# CORS MIDDLEWARE (REQUIRED FOR RENDER SERVICE-TO-SERVICE)
+# CORS
 # ===============================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for service-to-service communication
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -44,26 +40,16 @@ def health_check():
     return {
         "status": "UP",
         "service": "PulseESG AI Service",
-        "models": {
-            "spacy": SPACY_MODEL,
-            "sentiment": SENTIMENT_MODEL
-        }
+        "model": SPACY_MODEL
     }
 
 # ===============================
 # ESG ANALYSIS ENDPOINT
 # ===============================
-@app.post("/analyze", response_model=ESGResponse)
+@app.post("/analyze")
 def analyze_esg(request: ESGRequest):
     """
-    Core ESG intelligence endpoint.
+    ISS-style ESG analysis endpoint
     """
 
-    result = analyze_text(request.text)
-
-    return ESGResponse(
-        esgScore=result["esgScore"],
-        riskLevel=result["riskLevel"],
-        signals=result["signals"],
-        explanation=result["explanation"]
-    )
+    return analyze_text(request.text)
