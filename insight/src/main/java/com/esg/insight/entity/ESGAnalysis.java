@@ -21,27 +21,44 @@ public class ESGAnalysis {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // ===============================
+    // COMPANY REFERENCE
+    // ===============================
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "company_id", nullable = false)
     private Company company;
 
+    // ===============================
+    // SOURCE TEXT (AUDITABILITY)
+    // ===============================
     @Column(columnDefinition = "TEXT", nullable = false)
     private String newsText;
 
+    // ===============================
+    // QUERYABLE SUMMARY FIELDS
+    // ===============================
     @Column(nullable = false)
     private Integer esgScore;
 
     @Column(nullable = false)
     private String riskLevel;
 
+    // ===============================
+    // ANALYST SUMMARY
+    // ===============================
     @Column(columnDefinition = "TEXT")
-    private String explanation;
+    private String analystSummary;
 
-    // ✅ FIX: JSONB STORAGE
+    // ===============================
+    // FULL ISS ESG SNAPSHOT (JSONB)
+    // ===============================
     @Type(JsonType.class)
-    @Column(columnDefinition = "jsonb")
-    private Map<String, Object> signals;
+    @Column(columnDefinition = "jsonb", nullable = false)
+    private Map<String, Object> analysisPayload;
 
+    // ===============================
+    // METADATA
+    // ===============================
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

@@ -16,11 +16,17 @@ public class ESGController {
 
     private final ESGAnalysisService esgAnalysisService;
 
+    /**
+     * Trigger ISS-style ESG analysis for a company
+     */
     @PostMapping("/analyze")
     public ESGResponse analyze(@RequestBody ESGRequest request) {
         return esgAnalysisService.analyze(request);
     }
 
+    /**
+     * Fetch historical ESG analysis snapshots (audit-safe)
+     */
     @GetMapping("/history/{companyId}")
     public List<ESGHistoryResponse> history(@PathVariable Long companyId) {
         return esgAnalysisService.getHistory(companyId);

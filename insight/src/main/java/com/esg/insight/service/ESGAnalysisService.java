@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -26,7 +27,7 @@ public class ESGAnalysisService {
     private final EntityManager entityManager;
 
     // ===============================
-    // ESG ANALYSIS (ISS / MSCI STYLE)
+    // ESG ANALYSIS (ISS STOXX STYLE)
     // ===============================
     @Transactional
     public ESGResponse analyze(ESGRequest request) {
@@ -34,49 +35,63 @@ public class ESGAnalysisService {
         Company company = companyRepository.findById(request.getCompanyId())
                 .orElseThrow(() -> new RuntimeException("Company not found"));
 
+        // 🔹 Call AI service
         Map<String, Object> aiResult = aiClient.analyzeText(request.getNewsText());
 
-        // ✅ SAFE FIELD EXTRACTION (FIXED)
-        Number esgScoreNumber = (Number) aiResult.get("esgScore");
-        Integer esgScore = esgScoreNumber != null ? esgScoreNumber.intValue() : null;
+        // ===============================
+        // SAFE EXTRACTION (ISS OUTPUT)
+        // ===============================
+        @SuppressWarnings("unchecked")
+        Map<String, Object> overall =
+                (Map<String, Object>) aiResult.get("overallAssessment");
 
-        String riskLevel = (String) aiResult.get("riskLevel");
-        String explanation = (String) aiResult.get("explanation");
-
-        if (esgScore == null || riskLevel == null || explanation == null) {
-            throw new RuntimeException("Invalid AI response structure: " + aiResult);
+        if (overall == null) {
+            throw new RuntimeException("Invalid AI response: missing overallAssessment");
         }
 
-        // Store full AI signals for auditability
-        @SuppressWarnings("unchecked")
-        Map<String, Object> signals =
-                (Map<String, Object>) aiResult.getOrDefault("signals", Map.of());
+        Number esgScoreNumber = (Number) overall.get("esgScore");
+        String riskLevel = (String) overall.get("riskLevel");
 
+        if (esgScoreNumber == null || riskLevel == null) {
+            throw new RuntimeException("Invalid AI response: missing ESG score or risk level");
+        }
+
+        Integer esgScore = esgScoreNumber.intValue();
+        String analystSummary = (String) aiResult.get("analystSummary");
+
+        // ===============================
+        // PERSIST SNAPSHOT (AUDIT SAFE)
+        // ===============================
         ESGAnalysis analysis = ESGAnalysis.builder()
                 .company(company)
                 .newsText(request.getNewsText())
                 .esgScore(esgScore)
                 .riskLevel(riskLevel)
-                .explanation(explanation)
-                .signals(signals)
+                .analystSummary(analystSummary)
+                .analysisPayload(aiResult)
                 .build();
 
         esgAnalysisRepository.save(analysis);
 
-        // 🔴 REQUIRED for Supabase pooler
+        // Required for Supabase / PgBouncer
         entityManager.flush();
 
+        // ===============================
+        // RETURN ISS-STYLE RESPONSE
+        // ===============================
         return ESGResponse.builder()
                 .company(company.getName())
-                .esgScore(esgScore)
-                .riskLevel(riskLevel)
-                .explanation(explanation)
+                .overallAssessment(overall)
+                .pillarAssessment((Map<String, Object>) aiResult.get("pillarAssessment"))
+                .keyIncidents((List<Map<String, Object>>) aiResult.get("keyIncidents"))
+                .governanceAssessment((Map<String, Object>) aiResult.get("governanceAssessment"))
+                .analystSummary(analystSummary)
                 .timestamp(analysis.getCreatedAt())
                 .build();
     }
 
     // ===============================
-    // ESG HISTORY (AUDIT SAFE)
+    // ESG HISTORY (ISS AUDIT VIEW)
     // ===============================
     @Transactional(readOnly = true)
     public List<ESGHistoryResponse> getHistory(Long companyId) {
@@ -88,22 +103,16 @@ public class ESGAnalysisService {
         return esgAnalysisRepository
                 .findByCompanyIdOrderByCreatedAtDesc(companyId)
                 .stream()
-                .map(a -> {
-                    if (a == null || a.getCompany() == null) {
-                        return null;
-                    }
-
-                    return ESGHistoryResponse.builder()
-                            .analysisId(a.getId())
-                            .companyName(a.getCompany().getName())
-                            .esgScore(a.getEsgScore() != null ? a.getEsgScore() : 0)
-                            .riskLevel(a.getRiskLevel() != null ? a.getRiskLevel() : "UNKNOWN")
-                            .explanation(a.getExplanation())
-                            .signals(a.getSignals())
-                            .timestamp(a.getCreatedAt())
-                            .build();
-                })
-                .filter(response -> response != null)
+                .map(a -> ESGHistoryResponse.builder()
+                        .analysisId(a.getId())
+                        .companyName(a.getCompany().getName())
+                        .esgScore(a.getEsgScore())
+                        .riskLevel(a.getRiskLevel())
+                        .explanation(a.getAnalystSummary())
+                        .signals(a.getAnalysisPayload())
+                        .timestamp(a.getCreatedAt())
+                        .build()
+                )
                 .toList();
     }
 }

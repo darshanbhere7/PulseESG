@@ -14,13 +14,27 @@ public class ESGHistoryResponse {
 
     private String companyName;
 
+    // ===============================
+    // QUICK SUMMARY (LIST / TABLE VIEW)
+    // ===============================
     private int esgScore;
     private String riskLevel;
 
-    private String explanation;
+    // ===============================
+    // FULL ISS ESG SNAPSHOT (AUDIT SAFE)
+    // ===============================
+    /*
+      Contains:
+      - overallAssessment
+      - pillarAssessment
+      - keyIncidents
+      - governanceAssessment
+      - analystSummary
+    */
+    private Map<String, Object> analysisPayload;
 
-    // 🔴 ESG signals snapshot at analysis time
-    private Map<String, Object> signals;
-
+    // ===============================
+    // METADATA
+    // ===============================
     private LocalDateTime timestamp;
 }
