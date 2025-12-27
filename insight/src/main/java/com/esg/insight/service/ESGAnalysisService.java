@@ -80,7 +80,7 @@ public class ESGAnalysisService {
             // Required for Supabase / PgBouncer
             entityManager.flush();
             timestamp = analysis.getCreatedAt();
-        } catch (org.hibernate.exception.SQLGrammarException | jakarta.persistence.PersistenceException e) {
+        } catch (jakarta.persistence.PersistenceException e) {
             // If analysis_payload column doesn't exist, try saving without it
             if (e.getMessage() != null && e.getMessage().contains("analysis_payload")) {
                 try {
@@ -141,13 +141,13 @@ public class ESGAnalysisService {
                             .timestamp(a.getCreatedAt())
                             .build())
                     .collect(Collectors.toList());
-        } catch (org.hibernate.exception.SQLGrammarException | jakarta.persistence.PersistenceException e) {
+        } catch (jakarta.persistence.PersistenceException e) {
             // Handle case where analysis_payload column doesn't exist yet
             // Use native query that only selects columns that definitely exist
             try {
                 List<Object[]> results = esgAnalysisRepository.findHistoryByCompanyIdNative(companyId);
                 return results.stream()
-                        .map(row -> {
+                        .<ESGHistoryResponse>map(row -> {
                             Long id = ((Number) row[0]).longValue();
                             Long compId = ((Number) row[1]).longValue();
                             Integer esgScore = ((Number) row[2]).intValue();
