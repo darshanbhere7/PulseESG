@@ -34,12 +34,8 @@ public class ESGAnalysisService {
         Company company = companyRepository.findById(request.getCompanyId())
                 .orElseThrow(() -> new RuntimeException("Company not found"));
 
-        // 🔹 Call AI service
         Map<String, Object> aiResult = aiClient.analyzeText(request.getNewsText());
 
-        // ===============================
-        // SAFE EXTRACTION (ISS OUTPUT)
-        // ===============================
         @SuppressWarnings("unchecked")
         Map<String, Object> overall =
                 (Map<String, Object>) aiResult.get("overallAssessment");
@@ -58,9 +54,6 @@ public class ESGAnalysisService {
         Integer esgScore = esgScoreNumber.intValue();
         String analystSummary = (String) aiResult.get("analystSummary");
 
-        // ===============================
-        // PERSIST SNAPSHOT (AUDIT SAFE)
-        // ===============================
         ESGAnalysis analysis = ESGAnalysis.builder()
                 .company(company)
                 .newsText(request.getNewsText())
@@ -71,13 +64,8 @@ public class ESGAnalysisService {
                 .build();
 
         esgAnalysisRepository.save(analysis);
-
-        // Required for Supabase / PgBouncer
         entityManager.flush();
 
-        // ===============================
-        // RETURN ISS-STYLE RESPONSE
-        // ===============================
         return ESGResponse.builder()
                 .company(company.getName())
                 .overallAssessment(overall)
@@ -100,14 +88,14 @@ public class ESGAnalysisService {
         }
 
         return esgAnalysisRepository
-                .findByCompanyIdOrderByCreatedAtDesc(companyId)
+                .findHistoryWithCompany(companyId)
                 .stream()
                 .map(a -> ESGHistoryResponse.builder()
                         .analysisId(a.getId())
-                        .companyName(a.getCompany().getName())
+                        .companyName(a.getCompany().getName()) // SAFE NOW
                         .esgScore(a.getEsgScore())
                         .riskLevel(a.getRiskLevel())
-                        .analysisPayload(a.getAnalysisPayload()) // ✅ FIXED
+                        .analysisPayload(a.getAnalysisPayload())
                         .timestamp(a.getCreatedAt())
                         .build()
                 )
