@@ -72,19 +72,26 @@ def analyze_text(text: str) -> Dict:
     pillar_drivers = {"E": set(), "S": set(), "G": set()}
     incidents = []
 
-    has_resolution = any(t in clean_text for t in RESOLUTION_TERMS)
-    has_ongoing_risk = any(t in clean_text for t in ONGOING_RISK_TERMS)
+    has_resolution = any(term in clean_text for term in RESOLUTION_TERMS)
+    has_ongoing_risk = any(term in clean_text for term in ONGOING_RISK_TERMS)
 
+    # ===========================
+    # Compute penalties
+    # ===========================
     for pillar, keywords in NEGATIVE_EVENTS.items():
         for kw, severity in keywords.items():
             if kw in clean_text:
                 penalty = severity * 6
 
-                # Reduce penalty only if there is confirmed remediation AND no ongoing dispute
-                if has_resolution and not has_ongoing_risk:
+                # Governance: cancel penalty if positive governance reforms exist
+                if pillar == "G" and any(sig in clean_text for sig in POSITIVE_SIGNALS):
+                    penalty = 0
+
+                # Reduce penalty for resolved issues (excluding ongoing risks)
+                elif has_resolution and not has_ongoing_risk:
                     penalty = int(penalty * 0.35)
 
-                # Increase penalty if active legal / environmental dispute
+                # Increase penalty if ongoing dispute exists
                 if has_ongoing_risk:
                     if pillar in ["G", "S"]:
                         penalty += 5
@@ -101,12 +108,18 @@ def analyze_text(text: str) -> Dict:
                     "evidence": [kw]
                 })
 
-    # Apply positive bonuses for verified ESG actions
+    # ===========================
+    # Apply positive ESG bonuses
+    # ===========================
     for signal in POSITIVE_SIGNALS:
         if signal in clean_text and not has_ongoing_risk:
+            # Boost governance and environment
             pillar_bonus["G"] += 8
             pillar_bonus["E"] += 3
 
+    # ===========================
+    # Compute final pillar scores
+    # ===========================
     pillar_scores = {}
     for pillar in ["E", "S", "G"]:
         score = BASE_PILLAR_SCORE - pillar_penalty[pillar] + pillar_bonus[pillar]
@@ -119,6 +132,9 @@ def analyze_text(text: str) -> Dict:
 
     overall_score = int(sum(p["score"] for p in pillar_scores.values()) / 3)
 
+    # ===========================
+    # Return standard ISS-like ESG result
+    # ===========================
     return {
         "overallAssessment": {
             "esgScore": overall_score,
