@@ -32,7 +32,11 @@ POSITIVE_SIGNALS = [
 
 RESOLUTION_TERMS = [
     "completed", "resolved", "settled", "approved", "introduced",
-    "closed", "launched", "confirmed", "signed"
+    "closed", "launched", "confirmed", "signed", "implemented"
+]
+
+ONGOING_RISK_TERMS = [
+    "lawsuit", "class action", "alleged", "pending", "claims", "ongoing investigation"
 ]
 
 BASE_PILLAR_SCORE = 70
@@ -69,13 +73,23 @@ def analyze_text(text: str) -> Dict:
     incidents = []
 
     has_resolution = any(t in clean_text for t in RESOLUTION_TERMS)
+    has_ongoing_risk = any(t in clean_text for t in ONGOING_RISK_TERMS)
 
     for pillar, keywords in NEGATIVE_EVENTS.items():
         for kw, severity in keywords.items():
             if kw in clean_text:
                 penalty = severity * 6
-                if has_resolution:
+
+                # Reduce penalty only if there is confirmed remediation AND no ongoing dispute
+                if has_resolution and not has_ongoing_risk:
                     penalty = int(penalty * 0.35)
+
+                # Increase penalty if active legal / environmental dispute
+                if has_ongoing_risk:
+                    if pillar in ["G", "S"]:
+                        penalty += 5
+                    elif pillar == "E":
+                        penalty += 3
 
                 pillar_penalty[pillar] += penalty
                 pillar_drivers[pillar].add(kw)
@@ -87,8 +101,9 @@ def analyze_text(text: str) -> Dict:
                     "evidence": [kw]
                 })
 
+    # Apply positive bonuses for verified ESG actions
     for signal in POSITIVE_SIGNALS:
-        if signal in clean_text:
+        if signal in clean_text and not has_ongoing_risk:
             pillar_bonus["G"] += 8
             pillar_bonus["E"] += 3
 
@@ -116,7 +131,8 @@ def analyze_text(text: str) -> Dict:
             "concerns": pillar_scores["G"]["drivers"]
         },
         "analystSummary": (
-            "The entity exhibits ESG exposure driven by a mix of historical incidents "
-            "and subsequent remediation actions, with governance reforms moderating risk."
+            "The entity exhibits ESG exposure driven by a mix of historical incidents, "
+            "ongoing disputes, and subsequent remediation actions, with governance reforms "
+            "moderating risk when verified."
         )
     }
