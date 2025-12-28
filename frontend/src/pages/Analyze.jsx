@@ -36,26 +36,22 @@ import {
 function Analyze() {
   const [companies, setCompanies] = useState([]);
   const [companyId, setCompanyId] = useState("");
+  const [selectedCompany, setSelectedCompany] = useState(null);
   const [newsText, setNewsText] = useState("");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [loadingMessage, setLoadingMessage] = useState("");
   const [elapsedTime, setElapsedTime] = useState(0);
+
   const loadingIntervalRef = useRef(null);
   const timeIntervalRef = useRef(null);
 
   useEffect(() => {
     fetchCompanies();
-    
-    // Cleanup intervals on unmount
     return () => {
-      if (loadingIntervalRef.current) {
-        clearInterval(loadingIntervalRef.current);
-      }
-      if (timeIntervalRef.current) {
-        clearInterval(timeIntervalRef.current);
-      }
+      clearInterval(loadingIntervalRef.current);
+      clearInterval(timeIntervalRef.current);
     };
   }, []);
 
@@ -79,33 +75,24 @@ function Analyze() {
       setLoading(true);
       setResult(null);
       setElapsedTime(0);
-      setLoadingMessage("Initializing AI analysis...");
 
-      // Start loading message rotation
       const messages = [
         "Initializing AI analysis...",
-        "Processing ESG content...",
-        "Analyzing environmental factors...",
+        "Analyzing environmental risk...",
         "Evaluating social impact...",
-        "Assessing governance practices...",
-        "Calculating risk scores...",
-        "Generating insights...",
-        "Finalizing analysis...",
-        "AI is processing your request...",
-        "This may take a few minutes, please wait...",
-        "Analyzing complex ESG patterns...",
-        "Almost there, processing final details...",
+        "Assessing governance factors...",
+        "Calculating ESG scores...",
+        "Generating analyst insights...",
       ];
 
-      let messageIndex = 0;
+      let idx = 0;
       loadingIntervalRef.current = setInterval(() => {
-        messageIndex = (messageIndex + 1) % messages.length;
-        setLoadingMessage(messages[messageIndex]);
-      }, 8000); // Change message every 8 seconds
+        idx = (idx + 1) % messages.length;
+        setLoadingMessage(messages[idx]);
+      }, 8000);
 
-      // Start elapsed time counter
       timeIntervalRef.current = setInterval(() => {
-        setElapsedTime((prev) => prev + 1);
+        setElapsedTime((t) => t + 1);
       }, 1000);
 
       const res = await api.post("/esg/analyze", {
@@ -113,230 +100,95 @@ function Analyze() {
         text: newsText,
       });
 
-      // Clear intervals on success
-      if (loadingIntervalRef.current) {
-        clearInterval(loadingIntervalRef.current);
-        loadingIntervalRef.current = null;
-      }
-      if (timeIntervalRef.current) {
-        clearInterval(timeIntervalRef.current);
-        timeIntervalRef.current = null;
-      }
+      clearInterval(loadingIntervalRef.current);
+      clearInterval(timeIntervalRef.current);
 
       setResult(res.data);
-      setLoadingMessage("");
     } catch (err) {
-      // Clear intervals on error
-      if (loadingIntervalRef.current) {
-        clearInterval(loadingIntervalRef.current);
-        loadingIntervalRef.current = null;
-      }
-      if (timeIntervalRef.current) {
-        clearInterval(timeIntervalRef.current);
-        timeIntervalRef.current = null;
-      }
-
-      // Use user-friendly message from axios interceptor, or fallback to extracting from response
-      let errorMessage = err?.userFriendlyMessage;
-      
-      if (!errorMessage && err?.response?.data) {
-        const errorData = err.response.data;
-        
-        // Safely extract error message, avoiding HTML
-        if (typeof errorData === 'string') {
-          // Check if it's HTML
-          if (!errorData.trim().startsWith('<!DOCTYPE') && 
-              !errorData.trim().startsWith('<html') &&
-              !errorData.includes('<html')) {
-            // Remove any HTML tags and use if reasonable
-            const clean = errorData.replace(/<[^>]*>/g, '').trim();
-            if (clean.length > 0 && clean.length < 500) {
-              errorMessage = clean;
-            }
-          }
-        } else if (typeof errorData === 'object') {
-          errorMessage = errorData.error || errorData.message;
-          // Sanitize if it contains HTML
-          if (errorMessage && typeof errorMessage === 'string') {
-            if (errorMessage.includes('<html') || errorMessage.includes('<!DOCTYPE')) {
-              errorMessage = null; // Will use fallback
-            } else {
-              errorMessage = errorMessage.replace(/<[^>]*>/g, '').trim();
-            }
-          }
-        }
-      }
-      
-      // Final fallback
-      if (!errorMessage) {
-        if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
-          errorMessage = "Request timed out. The AI service may be processing your request. Please try again.";
-        } else {
-          errorMessage = "ESG analysis failed. Please try again later.";
-        }
-      }
-      
-      setError(errorMessage);
-      setLoadingMessage("");
-      console.error("Analysis error:", err);
+      setError("ESG analysis failed. Please try again.");
     } finally {
       setLoading(false);
+      setLoadingMessage("");
     }
-  };
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    if (mins > 0) {
-      return `${mins}m ${secs}s`;
-    }
-    return `${secs}s`;
   };
 
   const getRiskConfig = (level) => {
     const configs = {
-      HIGH: {
-        variant: "destructive",
-        icon: AlertTriangle,
-        border: "border-destructive/50 dark:border-destructive/30",
-        bg: "bg-destructive/5 dark:bg-destructive/10",
-      },
-      MEDIUM: {
-        variant: "warning",
-        icon: TrendingUp,
-        border: "border-yellow-500/50 dark:border-yellow-500/30",
-        bg: "bg-yellow-500/5 dark:bg-yellow-500/10",
-      },
-      LOW: {
-        variant: "success",
-        icon: CheckCircle2,
-        border: "border-green-500/50 dark:border-green-500/30",
-        bg: "bg-green-500/5 dark:bg-green-500/10",
-      },
+      HIGH: { variant: "destructive", icon: AlertTriangle },
+      MEDIUM: { variant: "warning", icon: TrendingUp },
+      LOW: { variant: "success", icon: CheckCircle2 },
     };
     return configs[level] || configs.MEDIUM;
   };
 
-  const riskConfig = result ? getRiskConfig(result.overallAssessment?.riskLevel || result.riskLevel) : null;
+  const riskConfig = result
+    ? getRiskConfig(result.overallAssessment.riskLevel)
+    : null;
   const RiskIcon = riskConfig?.icon;
 
-  const renderPillarCard = (pillar, data) => {
+  const renderPillar = (label, data) => {
     if (!data) return null;
-    
-    const score = data.score || 0;
-    const risk = data.risk || "UNKNOWN";
-    const drivers = data.drivers || [];
-    const pillarConfig = getRiskConfig(risk);
-    const PillarIcon = pillarConfig?.icon;
+    const cfg = getRiskConfig(data.risk);
+    const Icon = cfg.icon;
 
     return (
-      <Card key={pillar} className={`border ${pillarConfig.border} ${pillarConfig.bg}`}>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <PillarIcon className="h-4 w-4" />
-            {pillar} Pillar
+      <Card key={label} className="border">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Icon className="h-4 w-4" /> {label} Pillar
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Score</span>
-            <span className="text-lg font-semibold text-foreground">{score}</span>
+        <CardContent className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>Score</span>
+            <span className="font-semibold">{data.score}</span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Risk</span>
-            <Badge variant={pillarConfig.variant} className="text-xs">
-              {risk}
-            </Badge>
+          <Badge variant={cfg.variant}>{data.risk}</Badge>
+          <div className="flex flex-wrap gap-1">
+            {data.drivers?.map((d, i) => (
+              <Badge key={i} variant="outline" className="text-xs">
+                {d}
+              </Badge>
+            ))}
           </div>
-          {drivers.length > 0 && (
-            <div className="space-y-2 pt-2 border-t">
-              <p className="text-xs font-medium text-muted-foreground">Key Drivers</p>
-              <div className="flex flex-wrap gap-1.5">
-                {drivers.slice(0, 3).map((driver, i) => (
-                  <Badge key={i} variant="outline" className="text-xs">
-                    {driver}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
     );
   };
 
-  const renderKeyIncidents = (incidents) => {
-    if (!incidents || incidents.length === 0) return null;
-
-    return (
-      <div className="space-y-3">
-        <h4 className="font-semibold text-foreground">Key Incidents</h4>
-        <div className="space-y-2">
-          {incidents.map((incident, i) => {
-            const severity = incident.severity || "MEDIUM";
-            const severityConfig = getRiskConfig(severity);
-            return (
-              <div
-                key={i}
-                className={`p-3 rounded-lg border ${severityConfig.border} ${severityConfig.bg}`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant={severityConfig.variant} className="text-xs">
-                        {incident.pillar || "N/A"}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {severity}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-foreground font-medium">{incident.incident}</p>
-                    {incident.evidence && incident.evidence.length > 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Evidence: {incident.evidence.join(", ")}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
   return (
-    <div className="pt-24 px-6 pb-10 space-y-8 max-w-7xl mx-auto">
-      {/* HEADER */}
+    <div className="pt-24 px-6 pb-10 max-w-7xl mx-auto space-y-8">
       <div className="flex items-center gap-3">
-        <Shield className="h-7 w-7 text-foreground" />
+        <Shield className="h-7 w-7" />
         <div>
-          <h1 className="text-3xl font-bold text-foreground">ESG Risk Analysis</h1>
+          <h1 className="text-3xl font-bold">ESG Risk Analysis</h1>
           <p className="text-sm text-muted-foreground">
-            Event-based ESG intelligence for informed decisions
+            ISS-style event-driven ESG intelligence
           </p>
         </div>
       </div>
 
-      {/* INPUT CARD */}
+      {/* Input */}
       <Card>
         <CardHeader>
           <CardTitle>New Analysis</CardTitle>
-          <CardDescription>
-            Select a company and paste ESG-related news
-          </CardDescription>
         </CardHeader>
-
         <CardContent className="space-y-4">
           {error && (
             <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
-          <Select value={companyId} onValueChange={setCompanyId}>
+          <Select
+            value={companyId}
+            onValueChange={(val) => {
+              setCompanyId(val);
+              setSelectedCompany(
+                companies.find((c) => String(c.id) === val)
+              );
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select Company" />
             </SelectTrigger>
@@ -351,126 +203,67 @@ function Analyze() {
 
           <Textarea
             rows={8}
-            placeholder="Paste ESG-related content..."
+            placeholder="Paste ESG-related news..."
             value={newsText}
             onChange={(e) => setNewsText(e.target.value)}
           />
 
           <Button onClick={analyze} disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Analyzing
-              </>
-            ) : (
-              "Analyze ESG"
-            )}
+            {loading ? <Loader2 className="animate-spin" /> : "Analyze ESG"}
           </Button>
         </CardContent>
       </Card>
 
-      {/* LOADING CARD */}
-      {loading && (
-        <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 dark:from-primary/10 dark:via-primary/20 dark:to-primary/10">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-foreground">
-              <Activity className="h-5 w-5 animate-pulse text-primary" />
-              AI Analysis in Progress
-            </CardTitle>
-            <CardDescription className="text-muted-foreground">
-              Our AI is analyzing your ESG content. This may take several minutes, especially if the service is starting up.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                <Zap className="h-5 w-5 absolute -top-1 -right-1 animate-pulse text-primary" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-base text-foreground">{loadingMessage}</p>
-                <p className="text-sm text-muted-foreground mt-1.5">
-                  Elapsed time: <span className="font-medium">{formatTime(elapsedTime)}</span>
-                </p>
-              </div>
-            </div>
-            
-            <Progress 
-              value={Math.min((elapsedTime / 600) * 100, 95)} 
-              className="h-2.5"
-            />
-            
-            <div className="flex items-start gap-3 text-sm bg-muted/50 dark:bg-muted/30 border border-border rounded-lg p-4">
-              <AlertTriangle className="h-5 w-5 mt-0.5 flex-shrink-0 text-muted-foreground" />
-              <div className="flex-1">
-                <p className="font-semibold mb-1.5 text-foreground">Why is this taking time?</p>
-                <p className="text-muted-foreground leading-relaxed">
-                  The AI service may be starting up (cold start) or processing complex analysis. 
-                  Please wait - the analysis will complete automatically. You can keep this page open.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* RESULT */}
+      {/* Result */}
       {result && (
-        <Card className={`border-2 ${riskConfig.border} ${riskConfig.bg}`}>
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-foreground">
+            <CardTitle className="flex items-center gap-2">
               <RiskIcon className="h-5 w-5" />
               Analysis Result
             </CardTitle>
           </CardHeader>
-
-          <CardContent className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Company</p>
-                <p className="text-lg font-semibold text-foreground">{result.company}</p>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Company</p>
+                <p className="font-semibold">{selectedCompany?.name}</p>
               </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">ESG Score</p>
-                <p className="text-lg font-semibold text-foreground">
-                  {result.overallAssessment?.esgScore ?? result.esgScore}
+              <div>
+                <p className="text-sm text-muted-foreground">ESG Score</p>
+                <p className="font-semibold">
+                  {result.overallAssessment.esgScore}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Badge variant={riskConfig.variant} className="text-sm font-semibold px-3 py-1">
-                {(result.overallAssessment?.riskLevel || result.riskLevel)?.toUpperCase()} RISK
-              </Badge>
+            <Badge variant={riskConfig.variant}>
+              {result.overallAssessment.riskLevel} RISK
+            </Badge>
+
+            <Separator />
+
+            <p className="leading-relaxed">{result.analystSummary}</p>
+
+            <Separator />
+
+            <div className="grid md:grid-cols-3 gap-4">
+              {renderPillar("Environmental", result.pillarAssessment.E)}
+              {renderPillar("Social", result.pillarAssessment.S)}
+              {renderPillar("Governance", result.pillarAssessment.G)}
             </div>
 
-            <Separator className="my-2" />
-
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-muted-foreground">Analyst Summary</p>
-              <p className="text-foreground leading-relaxed">
-                {result.analystSummary || result.explanation}
-              </p>
-            </div>
-
-            {result.pillarAssessment && (
+            {result.keyIncidents?.length > 0 && (
               <>
-                <Separator className="my-2" />
-                <div className="space-y-3">
-                  <p className="text-sm font-medium text-muted-foreground">Pillar Assessment</p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {renderPillarCard("E", result.pillarAssessment.E)}
-                    {renderPillarCard("S", result.pillarAssessment.S)}
-                    {renderPillarCard("G", result.pillarAssessment.G)}
-                  </div>
+                <Separator />
+                <div>
+                  <h4 className="font-semibold mb-2">Key Incidents</h4>
+                  {result.keyIncidents.map((i, idx) => (
+                    <p key={idx} className="text-sm">
+                      • {i.incident} ({i.severity})
+                    </p>
+                  ))}
                 </div>
-              </>
-            )}
-
-            {result.keyIncidents && result.keyIncidents.length > 0 && (
-              <>
-                <Separator className="my-2" />
-                {renderKeyIncidents(result.keyIncidents)}
               </>
             )}
           </CardContent>

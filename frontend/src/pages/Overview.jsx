@@ -114,27 +114,18 @@ export default function Overview() {
   const avgScore =
     analyses.length > 0
       ? Math.round(
-        analyses.reduce((sum, a) => {
-          const score = a.overallAssessment?.esgScore ?? a.esgScore ?? 0;
-          return sum + score;
-        }, 0) / analyses.length
+        analyses.reduce((sum, a) => sum + Number(a.esgScore || 0), 0) /
+        analyses.length
       )
       : 0;
 
+
   const riskCounts = {
-    HIGH: analyses.filter((a) => {
-      const risk = a.overallAssessment?.riskLevel ?? a.riskLevel;
-      return risk === "HIGH";
-    }).length,
-    MEDIUM: analyses.filter((a) => {
-      const risk = a.overallAssessment?.riskLevel ?? a.riskLevel;
-      return risk === "MEDIUM";
-    }).length,
-    LOW: analyses.filter((a) => {
-      const risk = a.overallAssessment?.riskLevel ?? a.riskLevel;
-      return risk === "LOW";
-    }).length,
+    HIGH: analyses.filter((a) => a.riskLevel === "HIGH").length,
+    MEDIUM: analyses.filter((a) => a.riskLevel === "MEDIUM").length,
+    LOW: analyses.filter((a) => a.riskLevel === "LOW").length,
   };
+
 
   // Calculate trend (mock data - you can replace with actual trend logic)
   const scoreTrend = Math.random() > 0.5 ? "up" : "down";
@@ -162,21 +153,21 @@ export default function Overview() {
   }));
 
   // Get unique companies with their latest/highest scores for performance charts
-  
+
   const companyPerformanceData = (() => {
     // Group analyses by company and get the latest analysis for each company
     const companyMap = new Map();
-    
+
     analyses.forEach((a) => {
       const companyName = a.companyName;
-      const score = Number(a.overallAssessment?.esgScore ?? a.esgScore ?? 0);
+      const score = Number(a.esgScore || 0);
       const timestamp = getTs(a);
-      
+
       if (!companyName || isNaN(score)) return;
-      
+
       // Prefer riskLevel from overallAssessment, then fallback to root level, then score-based
-      const riskLevel = (a.overallAssessment?.riskLevel ?? a.riskLevel) || (score !== undefined && score !== null ? getRiskLevelFromScore(score) : "UNKNOWN");
-      
+      const riskLevel = a.riskLevel;
+
       if (!companyMap.has(companyName)) {
         companyMap.set(companyName, {
           name: companyName,
@@ -188,7 +179,7 @@ export default function Overview() {
         const existing = companyMap.get(companyName);
         const existingTs = existing.timestamp || 0;
         const newTs = timestamp ? new Date(timestamp).getTime() : 0;
-        
+
         // Use the most recent analysis for each company
         if (newTs > existingTs) {
           companyMap.set(companyName, {
@@ -200,7 +191,7 @@ export default function Overview() {
         }
       }
     });
-    
+
     return Array.from(companyMap.values());
   })();
 
@@ -230,12 +221,12 @@ export default function Overview() {
     // Filter analyses with valid scores and timestamps
     const validAnalyses = analyses
       .filter((a) => {
-        const score = a?.overallAssessment?.esgScore ?? a?.esgScore;
+        const score = a?.esgScore;
         const ts = getTs(a);
         return score !== undefined && score !== null && ts;
       })
       .map((a) => ({
-        score: Number(a.overallAssessment?.esgScore ?? a.esgScore ?? 0),
+        score: Number(a.esgScore || 0),
         timestamp: new Date(getTs(a)).getTime(),
         date: new Date(getTs(a)),
       }));
@@ -246,12 +237,12 @@ export default function Overview() {
 
     // Group by month and calculate average score for each month
     const monthlyData = new Map();
-    
+
     validAnalyses.forEach((a) => {
       const year = a.date.getFullYear();
       const month = a.date.getMonth();
       const key = `${year}-${month}`;
-      
+
       if (!monthlyData.has(key)) {
         monthlyData.set(key, {
           key,
@@ -261,7 +252,7 @@ export default function Overview() {
           date: a.date,
         });
       }
-      
+
       monthlyData.get(key).scores.push(a.score);
     });
 
@@ -596,10 +587,9 @@ export default function Overview() {
                   <TableBody>
                     {analyses
                       .filter((a) => (companyFilter === "all" ? true : a.companyName === companyFilter))
-                      .filter((a) => {
-                        const risk = a.overallAssessment?.riskLevel ?? a.riskLevel;
-                        return riskFilter === "all" ? true : risk === riskFilter;
-                      })
+                      .filter((a) =>
+                        riskFilter === "all" ? true : a.riskLevel === riskFilter
+                      )
                       .sort((a, b) => {
                         // Sort by timestamp descending (most recent first)
                         const tsA = getTs(a);
@@ -622,9 +612,9 @@ export default function Overview() {
                         };
 
                         const dateStr = getDateStr(a);
-                        const score = Number(a.overallAssessment?.esgScore ?? a.esgScore ?? 0);
+                        const score = Number(a.esgScore || 0);
                         // Prefer riskLevel from overallAssessment, then root level, then fallback
-                        const displayRisk = (a.overallAssessment?.riskLevel ?? a.riskLevel) || (score !== undefined && score !== null ? getRiskLevelFromScore(score) : "UNKNOWN");
+                        const displayRisk = a.riskLevel;
 
                         return (
                           <TableRow
@@ -639,10 +629,10 @@ export default function Overview() {
                                 <Progress
                                   value={score}
                                   className={`h-2 w-20 bg-neutral-200 dark:bg-neutral-800 ${displayRisk === 'HIGH'
-                                      ? '[&>div]:bg-red-500 dark:[&>div]:bg-red-400'
-                                      : displayRisk === 'MEDIUM'
-                                        ? '[&>div]:bg-amber-500 dark:[&>div]:bg-amber-400'
-                                        : '[&>div]:bg-emerald-500 dark:[&>div]:bg-emerald-400'
+                                    ? '[&>div]:bg-red-500 dark:[&>div]:bg-red-400'
+                                    : displayRisk === 'MEDIUM'
+                                      ? '[&>div]:bg-amber-500 dark:[&>div]:bg-amber-400'
+                                      : '[&>div]:bg-emerald-500 dark:[&>div]:bg-emerald-400'
                                     }`}
                                 />
                               </div>
