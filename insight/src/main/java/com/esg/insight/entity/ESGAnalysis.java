@@ -53,7 +53,7 @@ public class ESGAnalysis {
     // FULL ISS ESG SNAPSHOT (JSONB)
     // ===============================
     @Type(JsonType.class)
-    @Column(name = "analysis_payload", columnDefinition = "jsonb", nullable = true)
+    @Column(columnDefinition = "jsonb", nullable = false)
     private Map<String, Object> analysisPayload;
 
     // ===============================
