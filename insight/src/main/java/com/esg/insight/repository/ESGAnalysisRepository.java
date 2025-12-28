@@ -9,16 +9,18 @@ import java.util.List;
 
 public interface ESGAnalysisRepository extends JpaRepository<ESGAnalysis, Long> {
 
-    /**
-     * ✅ FIX: JOIN FETCH company to avoid LazyInitializationException
-     * Required for PgBouncer / Render
-     */
-    @Query("""
-        SELECT a
-        FROM ESGAnalysis a
-        JOIN FETCH a.company
-        WHERE a.company.id = :companyId
-        ORDER BY a.createdAt DESC
-    """)
-    List<ESGAnalysis> findHistoryWithCompany(@Param("companyId") Long companyId);
+    // ✅ REQUIRED FOR HISTORY PAGE
+    List<ESGAnalysis> findByCompanyIdOrderByCreatedAtDesc(Long companyId);
+
+    // OPTIONAL (keep only if you want native fallback)
+    @Query(
+            value = """
+            SELECT *
+            FROM esg_analyses e
+            WHERE e.company_id = :companyId
+            ORDER BY e.created_at DESC
+        """,
+            nativeQuery = true
+    )
+    List<ESGAnalysis> findHistoryNative(@Param("companyId") Long companyId);
 }

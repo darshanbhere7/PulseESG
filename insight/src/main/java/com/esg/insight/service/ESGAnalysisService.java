@@ -26,7 +26,7 @@ public class ESGAnalysisService {
     private final EntityManager entityManager;
 
     // ===============================
-    // ESG ANALYSIS (ISS STOXX STYLE)
+    // ESG ANALYSIS (AI CALL)
     // ===============================
     @Transactional
     public ESGResponse analyze(ESGRequest request) {
@@ -64,6 +64,8 @@ public class ESGAnalysisService {
                 .build();
 
         esgAnalysisRepository.save(analysis);
+
+        // REQUIRED for Supabase / PgBouncer
         entityManager.flush();
 
         return ESGResponse.builder()
@@ -78,7 +80,7 @@ public class ESGAnalysisService {
     }
 
     // ===============================
-    // ESG HISTORY (ISS AUDIT VIEW)
+    // ESG HISTORY (NO AI CALLS ❗)
     // ===============================
     @Transactional(readOnly = true)
     public List<ESGHistoryResponse> getHistory(Long companyId) {
@@ -88,11 +90,11 @@ public class ESGAnalysisService {
         }
 
         return esgAnalysisRepository
-                .findHistoryWithCompany(companyId)
+                .findByCompanyIdOrderByCreatedAtDesc(companyId)
                 .stream()
                 .map(a -> ESGHistoryResponse.builder()
                         .analysisId(a.getId())
-                        .companyName(a.getCompany().getName()) // SAFE NOW
+                        .companyName(a.getCompany().getName())
                         .esgScore(a.getEsgScore())
                         .riskLevel(a.getRiskLevel())
                         .analysisPayload(a.getAnalysisPayload())

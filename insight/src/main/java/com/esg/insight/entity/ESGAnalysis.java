@@ -31,35 +31,35 @@ public class ESGAnalysis {
     // ===============================
     // SOURCE TEXT (AUDITABILITY)
     // ===============================
-    @Column(columnDefinition = "TEXT", nullable = false)
+    @Column(name = "news_text", columnDefinition = "TEXT", nullable = false)
     private String newsText;
 
     // ===============================
     // QUERYABLE SUMMARY FIELDS
     // ===============================
-    @Column(nullable = false)
+    @Column(name = "esg_score", nullable = false)
     private Integer esgScore;
 
-    @Column(nullable = false)
+    @Column(name = "risk_level", nullable = false)
     private String riskLevel;
 
     // ===============================
-    // ANALYST SUMMARY
+    // ANALYST SUMMARY (NOW EXISTS IN DB ✅)
     // ===============================
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "analyst_summary", columnDefinition = "TEXT")
     private String analystSummary;
 
     // ===============================
-    // FULL ISS ESG SNAPSHOT (JSONB)
+    // FULL AI SNAPSHOT (JSONB)
     // ===============================
     @Type(JsonType.class)
-    @Column(columnDefinition = "jsonb", nullable = false)
+    @Column(name = "analysis_payload", columnDefinition = "jsonb", nullable = false)
     private Map<String, Object> analysisPayload;
 
     // ===============================
     // METADATA
     // ===============================
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
