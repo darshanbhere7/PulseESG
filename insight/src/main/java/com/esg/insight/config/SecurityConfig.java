@@ -18,7 +18,7 @@ import java.util.List;
 
 @Configuration
 @RequiredArgsConstructor
-@EnableMethodSecurity   // REQUIRED for @PreAuthorize
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
@@ -45,11 +45,11 @@ public class SecurityConfig {
                 )
 
                 // ===============================
-                // URL-LEVEL SECURITY
+                // URL SECURITY
                 // ===============================
                 .authorizeHttpRequests(auth -> auth
 
-                        // 🔴 REQUIRED FOR RENDER HEALTH CHECK
+                        // Health & root
                         .requestMatchers(
                                 "/",
                                 "/health",
@@ -59,7 +59,14 @@ public class SecurityConfig {
                         // Auth APIs
                         .requestMatchers("/api/auth/**").permitAll()
 
-                        // Everything else requires JWT
+                        // 🔥 PUBLIC ESG INTELLIGENCE (FIX)
+                        .requestMatchers(
+                                "/api/companies/**",
+                                "/api/esg/analyze",
+                                "/api/esg/history/**"
+                        ).permitAll()
+
+                        // Everything else secured
                         .anyRequest().authenticated()
                 )
 
@@ -67,7 +74,7 @@ public class SecurityConfig {
                 // JWT FILTER
                 // ===============================
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                
+
                 // ===============================
                 // EXCEPTION HANDLING
                 // ===============================
@@ -88,14 +95,13 @@ public class SecurityConfig {
     }
 
     // ===============================
-    // CORS CONFIGURATION
+    // CORS CONFIG
     // ===============================
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
         CorsConfiguration config = new CorsConfiguration();
 
-        // Local + deployed frontend
         String frontendUrl = System.getenv("FRONTEND_URL");
         if (frontendUrl != null && !frontendUrl.isEmpty()) {
             config.setAllowedOrigins(List.of(
@@ -105,7 +111,6 @@ public class SecurityConfig {
                     frontendUrl
             ));
         } else {
-            // Default: allow localhost for development
             config.setAllowedOrigins(List.of(
                     "http://localhost:5173",
                     "http://localhost:3000",
@@ -113,16 +118,11 @@ public class SecurityConfig {
             ));
         }
 
-        config.setAllowedMethods(
-                List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")
-        );
-
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
-
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
 
         return source;
