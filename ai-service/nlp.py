@@ -18,9 +18,9 @@ nlp = spacy.load(SPACY_MODEL)
 # ===============================
 
 NEGATIVE_EVENTS = {
-    "E": {"toxic": 5, "contamination": 5, "pollution": 4, "emissions": 4, "spill": 4},
-    "S": {"injury": 3, "fatality": 4, "harassment": 4, "discrimination": 4, "unsafe": 3, "illness": 3},
-    "G": {"fraud": 5, "bribery": 5, "investigation": 4, "audit": 3, "regulatory": 4, "whistleblower": 4}
+    "E": {"toxic": 5, "contamination": 5, "pollution": 4, "emissions": 4, "spill": 4, "waste": 4, "effluents": 4},
+    "S": {"injury": 3, "fatality": 4, "harassment": 4, "discrimination": 4, "unsafe": 3, "illness": 3, "fatalities": 4},
+    "G": {"fraud": 5, "bribery": 5, "investigation": 4, "audit": 3, "regulatory": 4, "whistleblower": 4, "cover-up": 5}
 }
 
 POSITIVE_SIGNALS = [
@@ -40,6 +40,7 @@ ONGOING_RISK_TERMS = [
 ]
 
 BASE_PILLAR_SCORE = 70
+MAX_PENALTY = {"E": 60, "S": 60, "G": 60}  # Max penalty to prevent collapse
 
 # ===============================
 # HELPERS
@@ -65,7 +66,6 @@ def risk_from_score(score: int) -> str:
 def analyze_text(text: str) -> Dict:
     clean_text = normalize_text(text)
     doc = nlp(clean_text)
-    terms = extract_terms(doc)
 
     pillar_penalty = {"E": 0, "S": 0, "G": 0}
     pillar_bonus = {"E": 0, "S": 0, "G": 0}
@@ -80,23 +80,20 @@ def analyze_text(text: str) -> Dict:
     # ===========================
     for pillar, keywords in NEGATIVE_EVENTS.items():
         for kw, severity in keywords.items():
-            if kw in clean_text:
-                penalty = severity * 6
-
-                # Governance: cancel penalty if positive governance reforms exist
-                if pillar == "G" and any(sig in clean_text for sig in POSITIVE_SIGNALS):
-                    penalty = 0
+            if kw in clean_text:  # partial match works for most cases
+                penalty = severity * 4  # smaller multiplier
+                penalty = min(penalty, MAX_PENALTY[pillar])  # cap max penalty
 
                 # Reduce penalty for resolved issues (excluding ongoing risks)
-                elif has_resolution and not has_ongoing_risk:
+                if has_resolution and not has_ongoing_risk:
                     penalty = int(penalty * 0.35)
 
-                # Increase penalty if ongoing dispute exists
+                # Increase penalty slightly for ongoing disputes
                 if has_ongoing_risk:
                     if pillar in ["G", "S"]:
-                        penalty += 5
+                        penalty += 2
                     elif pillar == "E":
-                        penalty += 3
+                        penalty += 1
 
                 pillar_penalty[pillar] += penalty
                 pillar_drivers[pillar].add(kw)
@@ -113,7 +110,6 @@ def analyze_text(text: str) -> Dict:
     # ===========================
     for signal in POSITIVE_SIGNALS:
         if signal in clean_text and not has_ongoing_risk:
-            # Boost governance and environment
             pillar_bonus["G"] += 8
             pillar_bonus["E"] += 3
 
@@ -123,7 +119,7 @@ def analyze_text(text: str) -> Dict:
     pillar_scores = {}
     for pillar in ["E", "S", "G"]:
         score = BASE_PILLAR_SCORE - pillar_penalty[pillar] + pillar_bonus[pillar]
-        score = max(0, min(100, score))
+        score = max(5, min(100, score))  # ensure minimum realistic floor
         pillar_scores[pillar] = {
             "score": score,
             "risk": risk_from_score(score),
@@ -132,9 +128,6 @@ def analyze_text(text: str) -> Dict:
 
     overall_score = int(sum(p["score"] for p in pillar_scores.values()) / 3)
 
-    # ===========================
-    # Return standard ISS-like ESG result
-    # ===========================
     return {
         "overallAssessment": {
             "esgScore": overall_score,
