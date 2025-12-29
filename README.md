@@ -57,7 +57,7 @@ The alignment issue usually occurs because standard text fonts vary in width. Be
 │  • ESG Reports                        │
 │  • Risk Visualizations                │
 └───────────────────┬───────────────────┘
-                    │ JWT
+                    │ Secure REST APIs (JWT)
                     ▼
 ┌───────────────────────────────────────┐
 │         Backend (Spring Boot)         │
@@ -66,7 +66,7 @@ The alignment issue usually occurs because standard text fonts vary in width. Be
 │  • ESG Orchestration                  │
 │  • Audit History                      │
 └───────────────────┬───────────────────┘
-                    │ REST
+                    │ Service Integration
                     ▼
 ┌───────────────────────────────────────┐
 │         AI Service (FastAPI)          │
