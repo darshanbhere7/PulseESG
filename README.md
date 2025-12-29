@@ -2,58 +2,76 @@
 
 AI-Powered ESG Risk Intelligence Platform
 
-PulseESG is an AI-driven ESG (Environmental, Social, Governance) risk intelligence platform that converts unstructured information into explainable ESG risk insights.
-The platform is conceptually aligned with institutional ESG frameworks used by MSCI and ISS, with emphasis on transparency, auditability, and scalable system design.
+PulseESG is an AI-driven ESG (Environmental, Social, Governance) risk intelligence platform that transforms unstructured information into explainable ESG risk insights. The system is conceptually aligned with institutional ESG methodologies used by MSCI and ISS, with a focus on transparency, auditability, and scalable system design.
 
 ✨ Key Capabilities
-
-Explainable ESG risk signal generation
-
-Governance and remediation signal recognition
-
-Role-based access control (Admin / Analyst)
-
-Company master data management
 
 ESG analysis history and audit trail
 
 Independent AI microservice for ESG intelligence
 
-┌─────────────────────────────────────────────┐
-│               Frontend (React)               │
-│  • Dashboards & Analytics                    │
-│  • ESG Reports                               │
-│  • Secure UI Access                          │
-└───────────────────────┬─────────────────────┘
-                        │
-                        │ JWT-secured REST APIs
-                        ▼
-┌─────────────────────────────────────────────┐
-│            Backend (Spring Boot)             │
-│  • Authentication & RBAC                    │
-│  • ESG Orchestration                         │
-│  • Company Management                       │
-│  • Audit & History                           │
-└───────────────────────┬─────────────────────┘
-                        │
-                        │ Service Integration
-                        ▼
-┌─────────────────────────────────────────────┐
-│             AI Service (FastAPI)             │
-│  • NLP Processing                            │
-│  • ESG Signal Detection                     │
-│  • Explainable Scoring                      │
-└───────────────────────┬─────────────────────┘
-                        │
-                        ▼
-┌─────────────────────────────────────────────┐
-│          PostgreSQL (Supabase)               │
-│  • Users & Roles                             │
-│  • Companies                                 │
-│  • ESG Analyses                              │
-│  • Audit Logs                                │
-└─────────────────────────────────────────────┘
+Explainable ESG risk signals
 
+Role-based access control (Admin / Analyst)
+
+Company master data management
+
+🏗 System Architecture
+flowchart TB
+    UI[Frontend\n(React)]
+    API[Backend\n(Spring Boot)]
+    AI[AI Service\n(FastAPI)]
+    DB[(PostgreSQL\nSupabase)]
+
+    UI -->|JWT-secured REST APIs| API
+    API -->|Service Integration| AI
+    AI -->|ESG Insights| API
+    API --> DB
+
+    UI:::layer
+    API:::layer
+    AI:::layer
+    DB:::layer
+
+    classDef layer fill:#0f172a,stroke:#38bdf8,stroke-width:1px,color:#e5e7eb
+
+🧩 Architecture Layers
+
+Frontend (React)
+
+Dashboards & analytics
+
+ESG reports
+
+Secure UI access
+
+Backend (Spring Boot)
+
+Authentication & RBAC
+
+ESG orchestration
+
+Company management
+
+Audit & history
+
+AI Service (FastAPI)
+
+NLP processing
+
+ESG signal detection
+
+Explainable scoring
+
+Database (PostgreSQL – Supabase)
+
+Users & roles
+
+Companies
+
+ESG analyses
+
+Audit logs
 
 🧰 Tech Stack
 Frontend
@@ -70,9 +88,7 @@ Backend
 
 Spring Boot (Java 21)
 
-JWT Authentication
-
-Role-Based Access Control
+JWT Authentication & RBAC
 
 PostgreSQL (Supabase)
 
@@ -84,7 +100,7 @@ FastAPI (Python)
 
 spaCy NLP pipeline
 
-Rule-driven ESG intelligence engine
+Rule-based ESG intelligence
 
 📂 Project Structure
 pulse-esg/
@@ -104,9 +120,9 @@ Stateless backend services
 
 Clear service boundaries
 
-🎯 Platform Objective
+🎯 Objective
 
-PulseESG is designed as a production-oriented ESG risk intelligence system suitable for fintech, compliance, and investment analytics workflows, prioritizing explainability and auditability over black-box scoring.
+PulseESG is designed as a production-oriented ESG risk intelligence system for fintech, compliance, and investment analytics use cases, prioritizing explainability and auditability over black-box scoring.
 
 👤 Author
 
