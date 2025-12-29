@@ -2,94 +2,177 @@
 
 AI-Powered ESG Risk Intelligence Platform
 
-PulseESG is an AI-driven ESG (Environmental, Social, Governance) risk intelligence platform designed to deliver explainable ESG risk insights from unstructured information. The system is conceptually aligned with institutional ESG approaches with a strong emphasis on auditability, transparency, and scalable backend architecture.
+PulseESG is an AI-driven ESG (Environmental, Social, Governance) risk intelligence platform designed to analyze unstructured information and generate explainable, event-based ESG risk signals for companies.
+The system is inspired by institutional ESG frameworks focusing on transparency, auditability, and real-time risk insights.
 
-✨ Key Features
+🔍 What Problem Does PulseESG Solve?
 
-ESG analysis history and audit trail
+Traditional ESG assessments suffer from:
 
-Independent AI microservice for ESG intelligence
+Heavy dependence on manual analysis
 
-Explainable ESG risk signals
+Delayed risk detection
 
-Role-based access control (Admin / Analyst)
+Limited explainability behind ESG scores
+
+Difficulty handling unstructured data (news, reports, disclosures)
+
+🎯 PulseESG bridges this gap by converting unstructured ESG-related content into:
+
+Structured ESG events
+
+Risk-weighted ESG scores
+
+Clear risk classifications (Low / Medium / High)
+
+Full audit trails and historical comparisons
+
+🚀 Core Features
+📊 ESG Intelligence
+
+Event-based ESG risk detection
+
+Rule-driven ESG scoring engine
+
+Explainable risk factors per company
+
+Governance maturity recognition (policies, remediation, oversight)
+
+🧠 AI-Driven Analysis
+
+NLP-based entity and event extraction
+
+ESG keyword taxonomy mapping
+
+Severity-weighted impact scoring
+
+Confidence-aware scoring logic
+
+🏢 Platform Capabilities
 
 Company master data management
 
+Portfolio-level ESG overview
+
+ESG audit & analysis history
+
+Role-based access control (Admin / Analyst)
+
+Secure REST APIs
+
 🏗 System Architecture
-+-----------------------------+
-|       Frontend (React)      |
-|  - Dashboards & Analytics   |
-|  - ESG Reports              |
-|  - Secure UI Access         |
-+-------------+---------------+
-              |
-              | JWT-secured REST APIs
-              v
-+-----------------------------+
-|   Backend (Spring Boot)     |
-|  - Authentication & RBAC    |
-|  - ESG Orchestration        |
-|  - Company Management       |
-|  - Audit & History          |
-+-------------+---------------+
-              |
-              | Service Integration
-              v
-+-----------------------------+
-|     AI Service (FastAPI)    |
-|  - NLP Processing           |
-|  - ESG Signal Detection     |
-|  - Explainable Scoring      |
-+-------------+---------------+
-              |
-              v
-+-----------------------------+
-|  PostgreSQL (Supabase)      |
-|  - Users & Roles            |
-|  - Companies                |
-|  - ESG Analyses             |
-|  - Audit Logs               |
-+-----------------------------+
+┌───────────────────────────┐
+│        Frontend (React)   │
+│  • Dashboards             │
+│  • ESG Reports            │
+│  • Risk Visualizations    │
+└─────────────┬─────────────┘
+              │ JWT
+┌─────────────▼─────────────┐
+│     Backend (Spring Boot) │
+│  • Auth & RBAC            │
+│  • Company Management     │
+│  • ESG Orchestration      │
+│  • Audit History          │
+└─────────────┬─────────────┘
+              │ REST
+┌─────────────▼─────────────┐
+│     AI Service (FastAPI)  │
+│  • NLP Processing         │
+│  • ESG Event Detection    │
+│  • Rule-Based Scoring     │
+└─────────────┬─────────────┘
+              │
+┌─────────────▼─────────────┐
+│   PostgreSQL (Supabase)   │
+│  • Users & Roles          │
+│  • Companies              │
+│  • ESG Scores             │
+│  • Audit Logs             │
+└───────────────────────────┘
 
 
-✅ This will render perfectly on GitHub
-✅ Looks clean in dark & light mode
-✅ Reads like an enterprise architecture diagram
 
-🧰 Tech Stack
-Frontend
-React + Vite, Tailwind CSS, shadcn/ui, Recharts
+🧩 Project Specifications
+🎨 Frontend
 
-Backend
-Spring Boot, JWT Authentication & RBAC, PostgreSQL (Supabase), JPA / Hibernate
+React + Vite
 
-AI Service
-FastAPI (Python), spaCy NLP pipeline, Rule-based ESG intelligence
+Tailwind CSS
 
-📂 Project Structure
-pulse-esg/
-├── frontend/        # React UI
-├── backend/         # Spring Boot REST APIs
-├── ai-service/      # FastAPI ESG intelligence
-├── docs/            # Architecture & references
-└── README.md
+shadcn/ui
 
-🔐 Security
+Recharts
+
+JWT-based protected routes
+
+Role-aware UI rendering
+
+Dark / Light mode support
+
+⚙️ Backend
+
+Spring Boot (Java 21)
+
+RESTful API architecture
+
+JWT authentication & RBAC
+
+PostgreSQL (Supabase)
+
+JPA / Hibernate ORM
+
+Stateless, scalable service design
+
+🤖 AI Microservice
+
+FastAPI (Python)
+
+spaCy NLP pipeline
+
+Rule-based ESG scoring engine
+
+Explainability-first design
+
+Easily extensible to ML models
+
+
+🔐 Security & Access Control
 
 JWT-based authentication
 
-Role-based authorization
+Role-based authorization:
 
-Stateless backend services
+Admin → Company & system management
 
-Clear separation of concerns
+Analyst → ESG analysis & insights
 
-🎯 Objective
+Secure API boundaries between services
 
-PulseESG is built as a production-oriented ESG risk intelligence system suitable for fintech, compliance, and investment analytics use cases, prioritizing explainability and auditability over black-box scoring.
+🌍 Real-World Alignment
 
-👤 Author
+PulseESG is designed with institutional ESG workflows in mind:
+
+Auditability over black-box scoring
+
+Explainable ESG decisions
+
+Clear separation of data, intelligence, and presentation layers
+
+Scalable microservice-friendly architecture
+
+This makes the platform suitable for:
+
+ESG research teams
+
+Risk & compliance units
+
+Fintech & investment analytics use cases
+
+
+🧑‍💻 Author
 
 Darshan Bhere
-SPIT ’26 | Software Engineer | REST API Developer | Java • Spring Boot • Microservices | Full-Stack MERN
+MCA @ SPIT Mumbai
+Aspiring Software Engineer | Backend & Full-Stack Development
+Focused on FinTech, Risk Systems, and Scalable Backend Architecture
